@@ -1,0 +1,123 @@
+import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from 'react';
+import { installGlobalHandlers, log } from '@/diagnostics/logger';
+import { AppsScreen } from '@/screens/AppsScreen';
+import { LogsScreen } from '@/screens/LogsScreen';
+import { SettingsScreen } from '@/screens/SettingsScreen';
+import { SourcesScreen } from '@/screens/SourcesScreen';
+import { StoreProvider, useStore } from '@/state/store';
+import { ThemeProvider } from '@/theme/ThemeProvider';
+import { NavigationBar, type Destination } from '@/ui/layout';
+import { Button, EmptyState, SnackbarProvider } from '@/ui/primitives';
+
+/**
+ * Shell and providers.
+ *
+ * Provider order matters and is not arbitrary:
+ *   ThemeProvider     paints the M3 custom properties everything else styles against
+ *   SnackbarProvider  needs the theme to render its inverse-surface bar
+ *   StoreProvider     owns scan/sync state, so it renders inside both
+ *   ErrorBoundary     wraps only the screens, keeping navigation alive through a crash
+ */
+export default function App() {
+  useEffect(() => installGlobalHandlers(), []);
+
+  return (
+    <ThemeProvider>
+      <SnackbarProvider>
+        <StoreProvider>
+          <ErrorBoundary>
+            <Shell />
+          </ErrorBoundary>
+        </StoreProvider>
+      </SnackbarProvider>
+    </ThemeProvider>
+  );
+}
+
+function Shell() {
+  const [destination, setDestination] = useState<Destination>('apps');
+  const { logsOpen, setLogsOpen } = useStore();
+
+  /*
+   * Three destinations, not four.
+   *
+   * Diagnostics used to be a tab, which put a developer tool on the same footing
+   * as the two screens the app exists for. It is now a full-screen overlay
+   * opened from Settings (and from a match's "open the diagnostics log" link),
+   * so the navigation bar only advertises things a user came here to do.
+   */
+  const destinations = useMemo(
+    () => [
+      { id: 'apps' as const, label: 'Apps', icon: 'apps' as const },
+      { id: 'sources' as const, label: 'Sources', icon: 'source' as const },
+      { id: 'settings' as const, label: 'Settings', icon: 'settings' as const },
+    ],
+    [],
+  );
+
+  return (
+    <div className="h-full">
+      {destination === 'apps' && <AppsScreen />}
+      {destination === 'sources' && <SourcesScreen />}
+      {destination === 'settings' && <SettingsScreen />}
+
+      <NavigationBar
+        destinations={destinations}
+        current={destination}
+        onNavigate={setDestination}
+      />
+
+      {logsOpen && (
+        <div className="fixed inset-0 z-40 bg-background">
+          <LogsScreen onClose={() => setLogsOpen(false)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Render-error boundary.
+ *
+ * A crash in the app list must not take the log viewer with it — that is the
+ * screen a user needs precisely when something is broken. So the boundary
+ * replaces only the content area and leaves navigation working.
+ */
+export class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    log.error('react', `Render error: ${error.message}`, {
+      stack: error.stack,
+      componentStack: info.componentStack,
+    });
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+
+    return (
+      <div className="flex h-full flex-col bg-background pt-16">
+        <EmptyState
+          icon="bug-report"
+          title="Something broke while rendering"
+          body={this.state.error.message}
+          action={
+            <Button variant="tonal" icon="refresh" onClick={() => this.setState({ error: null })}>
+              Try again
+            </Button>
+          }
+        />
+        <p className="md-body-small px-8 text-center text-on-surface-variant">
+          The full trace is in the Logs tab.
+        </p>
+      </div>
+    );
+  }
+}
+
+export { Shell };

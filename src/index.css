@@ -1,0 +1,552 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------ *
+ * Material You 3 for the scanner
+ *
+ * Material You means the palette is derived from the user's wallpaper on
+ * Android 12+, not picked from a swatch. The native layer hands us the
+ * device's system_accent1/2/3 tonal palettes, and `src/theme/m3.ts`
+ * re-derives the full color-role set from them at runtime. This file only
+ * declares the *baseline* purple palette so the very first paint (before
+ * the WebView has talked to Kotlin) is already correct and on-brand.
+ * ------------------------------------------------------------------ */
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+:root {
+  color-scheme: dark;
+
+  /* ------------------------------------------------------------------ *
+   * Baseline palette — the M3 reference tokens.
+   *
+   * Every value below is a spec token, not a chosen colour. The runtime
+   * rewrites all of them from the wallpaper palette (or a seed) before first
+   * paint; this block is what the very first frame uses, and what a device
+   * with no dynamic colour falls back to.
+   *
+   * Roles the supplied token set does not define (surface containers, the
+   * inverse pair, the fixed accents, outline_variant) are filled in from the
+   * same neutral family as the tokens around them, so the ladder stays
+   * consistent rather than being invented per component.
+   * ------------------------------------------------------------------ */
+  --md-sys-color-primary: #a8c7fa;
+  --md-sys-color-on-primary: #043075;
+  --md-sys-color-primary-container: #0842a0;
+  --md-sys-color-on-primary-container: #d3e3fd;
+  --md-sys-color-primary-fixed: #d3e3fd;
+  --md-sys-color-primary-fixed-dim: #a8c7fa;
+  --md-sys-color-on-primary-fixed: #041e49;
+  --md-sys-color-on-primary-fixed-variant: #0842a0;
+
+  --md-sys-color-secondary: #bac7db;
+  --md-sys-color-on-secondary: #253140;
+  --md-sys-color-secondary-container: #3b4858;
+  --md-sys-color-on-secondary-container: #d7e3f7;
+  --md-sys-color-secondary-fixed: #d7e3f7;
+  --md-sys-color-secondary-fixed-dim: #bac7db;
+  --md-sys-color-on-secondary-fixed: #101c2b;
+  --md-sys-color-on-secondary-fixed-variant: #3b4858;
+
+  /* Not in the supplied dark set; taken from the matching tonal family. */
+  --md-sys-color-tertiary: #dabde3;
+  --md-sys-color-on-tertiary: #3f2a49;
+  --md-sys-color-tertiary-container: #55415f;
+  --md-sys-color-on-tertiary-container: #f6d9ff;
+  --md-sys-color-tertiary-fixed: #f6d9ff;
+  --md-sys-color-tertiary-fixed-dim: #dabde3;
+  --md-sys-color-on-tertiary-fixed: #271431;
+  --md-sys-color-on-tertiary-fixed-variant: #55415f;
+
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+
+  --md-sys-color-background: #121212;
+  --md-sys-color-on-background: #e3e2e6;
+  --md-sys-color-surface: #1f1f1f;
+  --md-sys-color-on-surface: #e3e2e6;
+  --md-sys-color-surface-variant: #444746;
+  --md-sys-color-on-surface-variant: #c4c7c5;
+  --md-sys-color-surface-dim: #121212;
+  --md-sys-color-surface-bright: #3a3a3a;
+  --md-sys-color-surface-container-lowest: #0e0e0e;
+  --md-sys-color-surface-container-low: #1b1b1b;
+  --md-sys-color-surface-container: #1f1f1f;
+  --md-sys-color-surface-container-high: #2a2a2a;
+  --md-sys-color-surface-container-highest: #353535;
+
+  --md-sys-color-outline: #8e918f;
+  --md-sys-color-outline-variant: #444746;
+  --md-sys-color-inverse-surface: #e3e2e6;
+  --md-sys-color-inverse-on-surface: #303030;
+  --md-sys-color-inverse-primary: #0b57d0;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-surface-tint: var(--md-sys-color-primary);
+
+  /* ------------------------------------------------------------------ *
+   * Derived roles.
+   *
+   * Computed by `resolveScheme()` at runtime, which measures each on-colour
+   * against the fill it will actually sit on. The values here are the same
+   * algorithm applied to the baseline palette, so the first frame matches.
+   * ------------------------------------------------------------------ */
+  --md-sys-color-ok: #7ee2a8;
+  --md-sys-color-on-ok: #04301a;
+  --md-sys-color-ok-container: #1f6f45;
+  --md-sys-color-on-ok-container: #ffffff;
+  --md-sys-color-warn: #f5c542;
+  --md-sys-color-on-warn: #3a2c00;
+  --md-sys-color-warn-container: #8a6a00;
+  --md-sys-color-on-warn-container: #ffffff;
+  --md-sys-color-divider: #5c5f6f;
+
+  /* ------------------------------------------------------------------ *
+   * Shape — the spec's corner scale, named as the spec names it.
+   * ------------------------------------------------------------------ */
+  --md-sys-shape-none: 0px;
+  --md-sys-shape-extra-small: 4px;
+  --md-sys-shape-small: 8px;
+  --md-sys-shape-medium: 12px;
+  --md-sys-shape-large: 16px;
+  --md-sys-shape-extra-large: 28px;
+  --md-sys-shape-full: 9999px;
+
+  /* ------------------------------------------------------------------ *
+   * Elevation — spec levels 1-5, verbatim.
+   *
+   * M3 is deliberately flat: these are for the components that genuinely
+   * float (FAB, dialog, menu). Structure comes from container fills, which is
+   * why `Card` shadows nothing unless it is the `elevated` variant.
+   * ------------------------------------------------------------------ */
+  --md-sys-elevation-1: 0px 1px 3px 1px rgb(0 0 0 / 0.15), 0px 1px 2px 0px rgb(0 0 0 / 0.3);
+  --md-sys-elevation-2: 0px 2px 6px 2px rgb(0 0 0 / 0.15), 0px 1px 2px 0px rgb(0 0 0 / 0.3);
+  --md-sys-elevation-3: 0px 4px 8px 3px rgb(0 0 0 / 0.15), 0px 1px 3px 0px rgb(0 0 0 / 0.3);
+  --md-sys-elevation-4: 0px 6px 10px 4px rgb(0 0 0 / 0.15), 0px 2px 3px 0px rgb(0 0 0 / 0.3);
+  --md-sys-elevation-5: 0px 8px 12px 6px rgb(0 0 0 / 0.15), 0px 4px 4px 0px rgb(0 0 0 / 0.3);
+
+  /* --- Motion (M3 easing + duration) ----------------------------- */
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-duration-short: 150ms;
+  --md-sys-motion-duration-medium: 250ms;
+  --md-sys-motion-duration-long: 400ms;
+
+  /* --- State layer opacities (M3) --------------------------------- */
+  --md-state-hover: 0.08;
+  --md-state-focus: 0.1;
+  --md-state-pressed: 0.1;
+  --md-state-dragged: 0.16;
+
+  /* --- Layout ----------------------------------------------------- */
+  --app-nav-height: 80px;
+  --app-topbar-height: 64px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* Light scheme: the spec's light tokens. The theme bridge flips `data-theme`
+ * and the runtime rewrites every role above. */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --md-sys-color-primary: #0b57d0;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #d3e3fd;
+  --md-sys-color-on-primary-container: #041e49;
+  --md-sys-color-primary-fixed: #d3e3fd;
+  --md-sys-color-primary-fixed-dim: #a8c7fa;
+  --md-sys-color-on-primary-fixed: #041e49;
+  --md-sys-color-on-primary-fixed-variant: #0842a0;
+
+  --md-sys-color-secondary: #535f70;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #d7e3f7;
+  --md-sys-color-on-secondary-container: #101c2b;
+  --md-sys-color-secondary-fixed: #d7e3f7;
+  --md-sys-color-secondary-fixed-dim: #bac7db;
+  --md-sys-color-on-secondary-fixed: #101c2b;
+  --md-sys-color-on-secondary-fixed-variant: #3b4858;
+
+  --md-sys-color-tertiary: #6d5778;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #f6d9ff;
+  --md-sys-color-on-tertiary-container: #271431;
+  --md-sys-color-tertiary-fixed: #f6d9ff;
+  --md-sys-color-tertiary-fixed-dim: #dabde3;
+  --md-sys-color-on-tertiary-fixed: #271431;
+  --md-sys-color-on-tertiary-fixed-variant: #55415f;
+
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+
+  --md-sys-color-background: #ffffff;
+  --md-sys-color-on-background: #1f1f1f;
+  --md-sys-color-surface: #f8f9fa;
+  --md-sys-color-on-surface: #1f1f1f;
+  --md-sys-color-surface-variant: #e1e2ec;
+  --md-sys-color-on-surface-variant: #444746;
+  --md-sys-color-surface-dim: #d8dadf;
+  --md-sys-color-surface-bright: #ffffff;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f3f4f6;
+  --md-sys-color-surface-container: #eef0f3;
+  --md-sys-color-surface-container-high: #e8eaed;
+  --md-sys-color-surface-container-highest: #e1e3e6;
+
+  --md-sys-color-outline: #747775;
+  --md-sys-color-outline-variant: #c4c7c5;
+  --md-sys-color-inverse-surface: #2f3033;
+  --md-sys-color-inverse-on-surface: #f1f3f4;
+  --md-sys-color-inverse-primary: #a8c7fa;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-surface-tint: var(--md-sys-color-primary);
+
+  --md-sys-color-ok: #146c43;
+  --md-sys-color-on-ok: #ffffff;
+  --md-sys-color-ok-container: #a6f2c8;
+  --md-sys-color-on-ok-container: #000000;
+  --md-sys-color-warn: #8a6a00;
+  --md-sys-color-on-warn: #ffffff;
+  --md-sys-color-warn-container: #ffe08a;
+  --md-sys-color-on-warn-container: #000000;
+  --md-sys-color-divider: #b8afc8;
+}
+
+/* ------------------------------------------------------------------ *
+ * Bridge: M3 roles become Tailwind utilities.
+ * `inline` keeps the generated utilities referencing the live custom
+ * properties, so a runtime palette swap repaints without a rebuild.
+ * ------------------------------------------------------------------ */
+@theme inline {
+  --color-primary: var(--md-sys-color-primary);
+  --color-on-primary: var(--md-sys-color-on-primary);
+  --color-primary-container: var(--md-sys-color-primary-container);
+  --color-on-primary-container: var(--md-sys-color-on-primary-container);
+  --color-primary-fixed: var(--md-sys-color-primary-fixed);
+  --color-primary-fixed-dim: var(--md-sys-color-primary-fixed-dim);
+  --color-on-primary-fixed: var(--md-sys-color-on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--md-sys-color-on-primary-fixed-variant);
+
+  --color-secondary: var(--md-sys-color-secondary);
+  --color-on-secondary: var(--md-sys-color-on-secondary);
+  --color-secondary-container: var(--md-sys-color-secondary-container);
+  --color-on-secondary-container: var(--md-sys-color-on-secondary-container);
+  --color-secondary-fixed: var(--md-sys-color-secondary-fixed);
+  --color-secondary-fixed-dim: var(--md-sys-color-secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--md-sys-color-on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--md-sys-color-on-secondary-fixed-variant);
+
+  --color-tertiary: var(--md-sys-color-tertiary);
+  --color-on-tertiary: var(--md-sys-color-on-tertiary);
+  --color-tertiary-container: var(--md-sys-color-tertiary-container);
+  --color-on-tertiary-container: var(--md-sys-color-on-tertiary-container);
+  --color-tertiary-fixed: var(--md-sys-color-tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--md-sys-color-tertiary-fixed-dim);
+  --color-on-tertiary-fixed: var(--md-sys-color-on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--md-sys-color-on-tertiary-fixed-variant);
+
+  --color-error: var(--md-sys-color-error);
+  --color-on-error: var(--md-sys-color-on-error);
+  --color-error-container: var(--md-sys-color-error-container);
+  --color-on-error-container: var(--md-sys-color-on-error-container);
+
+  --color-background: var(--md-sys-color-background);
+  --color-on-background: var(--md-sys-color-on-background);
+  --color-surface: var(--md-sys-color-surface);
+  --color-on-surface: var(--md-sys-color-on-surface);
+  --color-surface-variant: var(--md-sys-color-surface-variant);
+  --color-on-surface-variant: var(--md-sys-color-on-surface-variant);
+  --color-surface-dim: var(--md-sys-color-surface-dim);
+  --color-surface-bright: var(--md-sys-color-surface-bright);
+  --color-surface-container-lowest: var(--md-sys-color-surface-container-lowest);
+  --color-surface-container-low: var(--md-sys-color-surface-container-low);
+  --color-surface-container: var(--md-sys-color-surface-container);
+  --color-surface-container-high: var(--md-sys-color-surface-container-high);
+  --color-surface-container-highest: var(--md-sys-color-surface-container-highest);
+
+  --color-outline: var(--md-sys-color-outline);
+  --color-outline-variant: var(--md-sys-color-outline-variant);
+  --color-inverse-surface: var(--md-sys-color-inverse-surface);
+  --color-inverse-on-surface: var(--md-sys-color-inverse-on-surface);
+  --color-inverse-primary: var(--md-sys-color-inverse-primary);
+  --color-scrim: var(--md-sys-color-scrim);
+
+  --color-ok: var(--md-sys-color-ok);
+  --color-on-ok: var(--md-sys-color-on-ok);
+  --color-ok-container: var(--md-sys-color-ok-container);
+  --color-on-ok-container: var(--md-sys-color-on-ok-container);
+  --color-warn: var(--md-sys-color-warn);
+  --color-on-warn: var(--md-sys-color-on-warn);
+  --color-warn-container: var(--md-sys-color-warn-container);
+  --color-on-warn-container: var(--md-sys-color-on-warn-container);
+  --color-divider: var(--md-sys-color-divider);
+
+  /* The spec's shape scale, one-to-one. Components pick by role, not by feel:
+   * cards/medium dialogs use md, sheets use lg, FABs use xl. */
+  --radius-xs: var(--md-sys-shape-extra-small);
+  --radius-sm: var(--md-sys-shape-small);
+  --radius-md: var(--md-sys-shape-medium);
+  --radius-lg: var(--md-sys-shape-large);
+  --radius-xl: var(--md-sys-shape-extra-large);
+  --radius-full: var(--md-sys-shape-full);
+
+  --shadow-e1: var(--md-sys-elevation-1);
+  --shadow-e2: var(--md-sys-elevation-2);
+  --shadow-e3: var(--md-sys-elevation-3);
+  --shadow-e4: var(--md-sys-elevation-4);
+  --shadow-e5: var(--md-sys-elevation-5);
+
+  --ease-standard: var(--md-sys-motion-easing-standard);
+  --ease-emphasized: var(--md-sys-motion-easing-emphasized);
+  --ease-decelerate: var(--md-sys-motion-easing-emphasized-decelerate);
+  --ease-accelerate: var(--md-sys-motion-easing-emphasized-accelerate);
+
+  --font-sans:
+    'Roboto Flex', 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:
+    'Roboto Mono', ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+}
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--md-sys-color-background);
+    color: var(--md-sys-color-on-background);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.25px;
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * M3 typescale — the 15 baseline styles, as utility classes.
+ * ------------------------------------------------------------------ */
+@layer components {
+  .md-display-large {
+    font-size: 57px; line-height: 64px; letter-spacing: -0.25px; font-weight: 400;
+  }
+  .md-display-medium {
+    font-size: 45px; line-height: 52px; letter-spacing: 0px; font-weight: 400;
+  }
+  .md-display-small {
+    font-size: 36px; line-height: 44px; letter-spacing: 0px; font-weight: 400;
+  }
+  .md-headline-large {
+    font-size: 32px; line-height: 40px; letter-spacing: 0px; font-weight: 400;
+  }
+  .md-headline-medium {
+    font-size: 28px; line-height: 36px; letter-spacing: 0px; font-weight: 400;
+  }
+  .md-headline-small {
+    font-size: 24px; line-height: 32px; letter-spacing: 0px; font-weight: 400;
+  }
+  .md-title-large {
+    font-size: 22px; line-height: 28px; letter-spacing: 0px; font-weight: 400;
+  }
+  .md-title-medium {
+    font-size: 16px; line-height: 24px; letter-spacing: 0.15px; font-weight: 500;
+  }
+  .md-title-small {
+    font-size: 14px; line-height: 20px; letter-spacing: 0.1px; font-weight: 500;
+  }
+  .md-body-large {
+    font-size: 16px; line-height: 24px; letter-spacing: 0.5px; font-weight: 400;
+  }
+  .md-body-medium {
+    font-size: 14px; line-height: 20px; letter-spacing: 0.25px; font-weight: 400;
+  }
+  .md-body-small {
+    font-size: 12px; line-height: 16px; letter-spacing: 0.4px; font-weight: 400;
+  }
+  .md-label-large {
+    font-size: 14px; line-height: 20px; letter-spacing: 0.1px; font-weight: 500;
+  }
+  .md-label-medium {
+    font-size: 12px; line-height: 16px; letter-spacing: 0.5px; font-weight: 500;
+  }
+  .md-label-small {
+    font-size: 11px; line-height: 16px; letter-spacing: 0.5px; font-weight: 500;
+  }
+
+  /* State layer: the M3 way of showing interaction on any surface.
+   * Uses currentColor so one class works on filled, tonal and text buttons. */
+  .state-layer {
+    position: relative;
+    isolation: isolate;
+  }
+  .state-layer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  }
+  .state-layer:hover::after {
+    opacity: var(--md-state-hover);
+  }
+  .state-layer:focus-visible::after {
+    opacity: var(--md-state-focus);
+  }
+  .state-layer:active::after {
+    opacity: var(--md-state-pressed);
+  }
+  .state-layer[data-dragged='true']::after {
+    opacity: var(--md-state-dragged);
+  }
+  .state-layer:disabled::after,
+  .state-layer[aria-disabled='true']::after {
+    opacity: 0;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Component metrics.
+   *
+   * Dimensions that a spec fixes (a switch track is 52x32dp, a search bar is
+   * 56dp) live here rather than as arbitrary values in JSX. One place to
+   * change, and the components stay free of absolute measurements.
+   * ---------------------------------------------------------------- */
+
+  /* M3 switch: 52x32 track, 16dp handle unchecked / 24dp checked. */
+  .md-switch {
+    inline-size: 52px;
+    block-size: 32px;
+  }
+
+  .md-switch-knob-off {
+    inset-inline-start: 6px;
+    inline-size: 16px;
+    block-size: 16px;
+  }
+
+  .md-switch-knob-off:active {
+    inline-size: 24px;
+  }
+
+  .md-switch-knob-on {
+    inset-inline-start: 24px;
+    inline-size: 24px;
+    block-size: 24px;
+  }
+
+  .md-switch-knob-on:active {
+    inline-size: 28px;
+  }
+
+  /* M3 modal bottom sheet: large top corners, capped height. */
+  .md-sheet-tall {
+    block-size: 92vh;
+  }
+
+  .md-sheet-auto {
+    max-block-size: 85vh;
+  }
+
+  /* M3 search bar: 56dp, full radius, high container fill. */
+  .md-search-bar {
+    block-size: 56px;
+    border-radius: var(--md-sys-shape-full);
+    background-color: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  /* M3 list item heights: 56dp one-line, 72dp two-line, 88dp three-line. */
+  .md-list-item {
+    min-block-size: 72px;
+  }
+
+  /* Squircle-ish container used by the tonal app-icon tiles in the list. */
+  .app-icon-tile {
+    border-radius: var(--md-sys-shape-medium);
+    overflow: hidden;
+    flex: none;
+    display: grid;
+    place-items: center;
+    font-weight: 500;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Motion
+ * ------------------------------------------------------------------ */
+@keyframes md-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes md-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-enter {
+  animation: md-enter var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-emphasized-decelerate) both;
+}
+.animate-sheet-up {
+  animation: md-sheet-up var(--md-sys-motion-duration-long) var(--md-sys-motion-easing-emphasized-decelerate) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

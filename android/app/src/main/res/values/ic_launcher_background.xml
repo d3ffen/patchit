@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The adaptive icon's background layer. M3 primary from the design tokens, so
+      the icon sits in the same family as everything the app draws. The
+      monochrome layer is what makes it dynamic; this is the fallback for
+      launchers that do not theme icons.
+    -->
+    <color name="ic_launcher_background">#0B57D0</color>
+</resources>

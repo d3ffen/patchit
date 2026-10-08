@@ -1,0 +1,31 @@
+// Top-level build file. Kotlin is added here rather than in app/build.gradle so
+// the version is pinned once for the whole build.
+
+buildscript {
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.2'
+        classpath 'com.google.gms:google-services:4.4.2'
+        // The native plugins are Kotlin: the PackageManager enumeration is
+        // allocation-heavy and the bridge code is much clearer with data
+        // classes than with a pile of Bundle handling.
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21'
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

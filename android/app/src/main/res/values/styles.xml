@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      The WebView fills the window, so the only thing these themes really control
+      is the colour behind it before React paints. Both are pinned to the app's
+      M3 baseline dark surface rather than following the system light/dark
+      setting: the app decides its scheme in JS (defaulting to dark), and a light
+      flash before a dark app is worse than a consistent dark handover.
+    -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/m3_surface</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/m3_surface</item>
+    </style>
+
+    <!--
+      Launch theme. `windowSplashScreenBackground` is the Android 12+ splash
+      colour; the pre-12 path uses the generated splash drawable. Both are set so
+      the handover looks the same on every version. Without
+      `postSplashScreenTheme` the activity keeps the splash theme and the whole
+      app renders on the launch background.
+    -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/m3_surface</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    </style>
+
+</resources>

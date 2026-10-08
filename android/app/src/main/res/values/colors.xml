@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Native window colours, used before the WebView paints.
+
+      These are the M3 baseline dark roles and cannot be dynamic: the platform
+      palette is not readable until after the activity's theme has already been
+      applied. Matching the app's own baseline surface means the launch screen
+      and the first WebView frame are the same colour, so there is no flash.
+    -->
+    <color name="colorPrimary">#D0BCFF</color>
+    <color name="colorPrimaryDark">#141218</color>
+    <color name="colorAccent">#D0BCFF</color>
+
+    <color name="m3_surface">#141218</color>
+    <color name="m3_surface_container">#211F26</color>
+    <color name="m3_on_surface">#E6E0E9</color>
+    <color name="m3_primary">#D0BCFF</color>
+</resources>

@@ -1,0 +1,34 @@
+# Build output
+dist/
+.verify/
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# npm cache, when it is redirected into the project for sandboxed installs
+.npm-cache/
+
+# Capacitor copies the web build into the native project on every sync.
+# The generated Android project itself IS tracked (the Kotlin plugins live in
+# it), but the copied web assets are derived from dist/ and should not be.
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+
+# Gradle / Android build output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Editor / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store

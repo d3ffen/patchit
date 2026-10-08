@@ -1,0 +1,90 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace "app.patchit"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "app.patchit"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        /*
+         * 21, not 17, and that is forced rather than chosen: Capacitor's
+         * generated `capacitor.build.gradle` sets source/targetCompatibility to
+         * VERSION_21, and it is applied at the bottom of this file, so it wins
+         * whatever is written here.
+         *
+         * Kotlin has to agree. Kotlin 2.0 fails the build outright on mixed
+         * targets — "Inconsistent JVM-target compatibility detected for tasks
+         * 'compileDebugJavaWithJavac' (21) and 'compileDebugKotlin' (17)" — so
+         * jvmTarget below must stay in step with these two.
+         */
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    /*
+     * Note for anyone tempted to add `androidx.activity:activity` here:
+     * you only need it if a plugin implements an `@ActivityCallback`, whose
+     * required signature is `(PluginCall, ActivityResult)`. Capacitor declares
+     * androidx.activity with `implementation`, not `api`, so it is on the
+     * runtime classpath but not on the compile classpath, and such a plugin
+     * will not compile without an explicit dependency.
+     *
+     * This app used to need exactly that, for a batch-patching hand-off that has
+     * since been removed in favour of add-source links. Nothing here calls
+     * `startActivityForResult` any more.
+     */
+    // The package scan and icon decode run off the main thread; coroutines give
+    // that work a structured lifetime instead of a bare Thread per call.
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0"
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

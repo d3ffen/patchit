@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PatchIt mark: a plaster/patch seen face on.
+
+  Drawn as a single evenOdd path so the centre is a genuine hole rather than a
+  second fill. That matters for the monochrome layer below: Android tints the
+  monochrome drawable with a colour derived from the wallpaper, and a hole lets
+  the tinted silhouette read correctly instead of showing a disc of some other
+  colour inside it.
+
+  Sizing follows the adaptive-icon grid: a 108dp viewport, with the mark kept
+  inside the inner 66dp safe circle so no launcher mask can clip it.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="-45">
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M41,39 L67,39 A15,15 0 0 1 67,69 L41,69 A15,15 0 0 1 41,39 Z M45,54 a9,9 0 1 0 18,0 a9,9 0 1 0 -18,0 Z" />
+    </group>
+</vector>
