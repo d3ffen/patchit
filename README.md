@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/d3ffen/patchit/releases/latest"><img src="https://img.shields.io/github/v/release/d3ffen/patchit?label=download&color=0B57D0" alt="Download"></a>
   <a href="#build"><img src="https://img.shields.io/badge/platform-Android%206%2B-3DDC84?logo=android&logoColor=white" alt="Android 6+"></a>
   <a href="#the-design-system"><img src="https://img.shields.io/badge/Material%20You-3-0B57D0" alt="Material You 3"></a>
   <a href="#architecture"><img src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin"></a>
@@ -17,6 +18,18 @@ do the work.
 
 It never patches anything itself. It answers *whether*, and *by whom*; Morphe
 decides *how*.
+
+## Install
+
+**[⬇ Download the latest APK](https://github.com/d3ffen/patchit/releases/latest)**
+
+```bash
+adb install patchit-1.0.0.apk
+```
+
+Requires **Android 6.0+**, and
+[**Morphe Manager**](https://github.com/MorpheApp/morphe-manager) if you want the
+source hand-off to go anywhere. Or [build it yourself](#build).
 
 ---
 
@@ -333,7 +346,8 @@ the same bar, since nothing else would.
 
 ## Licence
 
-GPL-3.0.
+GPL-3.0. Releases are signed with a self-generated key — certificate SHA-256
+`3e8c7cc9effaf575f54c61ceff035b98d52634b9e134a68f73d28074e65ed9cd`.
 
 Not affiliated with the Morphe project — PatchIt reads Morphe's public patch
 indexes and hands work to Morphe Manager. Material Symbols and the patch indexes
