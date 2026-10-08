@@ -28,7 +28,6 @@ export interface AppScannerPlugin {
   getIcon(options: { packageName: string; size?: number }): Promise<IconResult>;
   getIconBatch(options: { packageNames: string[]; size?: number }): Promise<{ icons: IconResult[] }>;
   openAppInfo(options: { packageName: string }): Promise<void>;
-  uninstall(options: { packageName: string }): Promise<void>;
   openInStore(options: { packageName: string }): Promise<void>;
   /** Cheap check used by the empty state before offering the permission deep link. */
   hasPackageVisibility(): Promise<{ granted: boolean }>;

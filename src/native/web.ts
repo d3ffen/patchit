@@ -187,10 +187,6 @@ export class AppScannerWeb implements AppScannerPlugin {
     console.info('[web] openAppInfo is a no-op outside Android');
   }
 
-  async uninstall(): Promise<void> {
-    console.info('[web] uninstall is a no-op outside Android');
-  }
-
   async openInStore(): Promise<void> {
     console.info('[web] openInStore is a no-op outside Android');
   }

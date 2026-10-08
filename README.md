@@ -61,6 +61,12 @@ npm run verify:theme     # measures every colour pair for WCAG contrast
 
 ---
 
+## Permissions
+
+- `QUERY_ALL_PACKAGES` — required to enumerate installed apps, which is the whole
+  point of the app. Without it Android 11+ only exposes a handful of packages.
+- `INTERNET` — fetching the patch indexes.
+
 ## Licence
 
 GPL-3.0. Releases are signed with a self-generated key — certificate SHA-256

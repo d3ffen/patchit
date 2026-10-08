@@ -397,21 +397,6 @@ class AppScannerPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun uninstall(call: PluginCall) {
-        val packageName = call.getString("packageName") ?: run {
-            call.reject("packageName is required")
-            return
-        }
-        launchSystemIntent(
-            call,
-            Intent(Intent.ACTION_DELETE).apply {
-                data = Uri.fromParts("package", packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            },
-        )
-    }
-
-    @PluginMethod
     fun openInStore(call: PluginCall) {
         val packageName = call.getString("packageName") ?: run {
             call.reject("packageName is required")
@@ -431,9 +416,8 @@ class AppScannerPlugin : Plugin() {
     }
 
     /**
-     * Uninstall needs the caller to have declared REQUEST_DELETE_PACKAGES on
-     * API 26+; a SecurityException here means the manifest lost that line, which
-     * is worth reporting precisely rather than as a generic failure.
+     * A SecurityException here means a permission the action needs is missing;
+     * reporting that precisely beats a generic failure.
      */
     private fun launchSystemIntent(call: PluginCall, intent: Intent) {
         try {

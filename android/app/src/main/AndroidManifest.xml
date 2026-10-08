@@ -18,9 +18,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Needed on API 26+ for the "uninstall" action to be permitted at all. -->
-    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
-
     <!--
       Explicit package visibility. QUERY_ALL_PACKAGES covers this on stock
       Android, but declaring the interesting packages keeps `<queries>`
