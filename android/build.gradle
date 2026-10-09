@@ -13,7 +13,7 @@ buildscript {
         // The native plugins are Kotlin: the PackageManager enumeration is
         // allocation-heavy and the bridge code is much clearer with data
         // classes than with a pile of Bundle handling.
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.20'
     }
 }
 

@@ -71,7 +71,7 @@ dependencies {
      */
     // The package scan and icon decode run off the main thread; coroutines give
     // that work a structured lifetime instead of a bare Thread per call.
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
