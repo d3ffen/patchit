@@ -16,6 +16,12 @@ PatchIt scans the apps on your Android device and shows which of them the
 patch — then hands the covering patch sources to Morphe Manager. It never patches
 anything itself.
 
+<p align="center">
+  <img src="docs/screenshot-apps.webp" alt="PatchIt listing patchable apps with a verdict and patch count for each" width="45%">
+  &nbsp;
+  <img src="docs/screenshot-sources.webp" alt="Patch sources screen showing bundle, patch and app counts per source" width="45%">
+</p>
+
 ---
 
 ## Features
@@ -27,14 +33,16 @@ anything itself.
   `supported`, `experimental`, `untested`, `too new`, `too old` or `no patches`,
   computed per source.
 - **Covers community patches** — the official list is 166 patches across 3 apps;
-  the community index adds 222 bundles, ~4,100 patches and **964 packages**.
+  the community index adds 222 bundles, ~4,200 patches and **~970 packages**.
 - **Works offline** — both indexes cached locally, with a bundled snapshot so a
-  first launch with no network still finds 966 packages.
+  first launch with no network still finds ~970 packages.
 - **Sets Morphe up** — sends the covering repositories to Morphe Manager through
   its real `add-source` deep link. Sources are offered even when they don't match
   your build, so you can update or downgrade and come back.
-- **Updates itself** — checks GitHub Releases on launch and installs newer
-  versions in-app. Android still shows its own installer and asks you to confirm.
+- **Auto-updates in-app** — checks GitHub Releases on launch and installs newer
+  versions without leaving the app, from a banner on the app list or from
+  Settings. Android still shows its own installer and asks you to confirm, so
+  nothing replaces itself silently.
 - **Material You 3** — wallpaper-derived colour, alternate palettes, AMOLED black,
   themed launcher icon.
 - **Explains itself** — a 500-entry diagnostics log with every registry warning.
