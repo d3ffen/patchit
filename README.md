@@ -27,24 +27,16 @@ anything itself.
 ## Features
 
 - **Scans installed apps** — version name and code, split APKs, signing
-  certificate, install dates, APK size, all via `PackageManager`.
-- **Checks compatibility** — compares your build against every source's declared
-  targets, by `versionCode` first and version name second. Verdicts are
-  `supported`, `experimental`, `untested`, `too new`, `too old` or `no patches`,
-  computed per source.
-- **Covers community patches** — the official list is 166 patches across 3 apps;
-  the community index adds 222 bundles, ~4,200 patches and **~970 packages**.
-- **Works offline** — both indexes cached locally, with a bundled snapshot so a
-  first launch with no network still finds ~970 packages.
+  certificate, install dates, APK size.
+- **Checks compatibility** — by `versionCode` first, version name second. Verdicts
+  are `supported`, `experimental`, `untested`, `too new`, `too old` or
+  `no patches`, computed per source.
+- **Covers community patches** — ~4,200 patches across ~970 packages.
+- **Works offline** — both indexes cached, plus a bundled snapshot.
 - **Sets Morphe up** — sends the covering repositories to Morphe Manager through
-  its real `add-source` deep link. Sources are offered even when they don't match
-  your build, so you can update or downgrade and come back.
-- **Auto-updates in-app** — checks GitHub Releases on launch and installs newer
-  versions without leaving the app, from a banner on the app list or from
-  Settings. Android still shows its own installer and asks you to confirm, so
-  nothing replaces itself silently.
-- **Material You 3** — wallpaper-derived colour, alternate palettes, AMOLED black,
-  themed launcher icon.
+  its real `add-source` deep link.
+- **Auto-updates in-app** — finds newer versions from a banner or from Settings.
+- **Material You 3** — wallpaper-derived colour, AMOLED black, themed icon.
 - **Explains itself** — a 500-entry diagnostics log with every registry warning.
 
 ---
