@@ -10,6 +10,7 @@ import {
 import { useTheme, type ColorStyle, type ThemeMode } from '@/theme/ThemeProvider';
 import { useStore } from '@/state/store';
 import { Icon } from '@/ui/icons';
+import { UpdateRow, UpdateSheet } from '@/ui/updater';
 import { Scaffold, SectionHeader, TopAppBar } from '@/ui/layout';
 import {
   Badge,
@@ -35,11 +36,13 @@ import {
  */
 export function SettingsScreen() {
   const theme = useTheme();
-  const { snapshot, sources, apps, lastSyncAt, sync, setLogsOpen } = useStore();
+  const { snapshot, sources, apps, lastSyncAt, sync, setLogsOpen, update, recheckUpdate } =
+    useStore();
   const { show } = useSnackbar();
   const [storage, setStorage] = useState<{ usage: number; quota: number } | null>(null);
   const [sheetsOpen, setSheetsOpen] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +61,10 @@ export function SettingsScreen() {
     <Scaffold
       appBar={<TopAppBar title="Settings" subtitle="Appearance, registry and diagnostics" />}
     >
+      {/* --- Updates ---------------------------------------------- */}
+      <SectionHeader>Updates</SectionHeader>
+      <UpdateRow state={update} onOpen={() => setUpdateOpen(true)} onRecheck={recheckUpdate} />
+
       {/* --- Appearance ------------------------------------------- */}
       <SectionHeader>Appearance</SectionHeader>
       <Card variant="outlined" className="mx-4 p-4">
@@ -354,6 +361,15 @@ export function SettingsScreen() {
           </div>
         </div>
       </BottomSheet>
+
+      {update.kind === 'available' && (
+        <UpdateSheet
+          open={updateOpen}
+          onClose={() => setUpdateOpen(false)}
+          release={update.release}
+          currentVersionLabel={update.current}
+        />
+      )}
 
       {/* --- Wipe confirmation ------------------------------------- */}
       <BottomSheet

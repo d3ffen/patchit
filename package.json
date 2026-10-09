@@ -1,9 +1,9 @@
 {
-  "name": "morphe-patch-scanner",
+  "name": "patchit",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Scan installed Android apps and cross-reference them against the Morphe patches ecosystem.",
+  "description": "Scan your Android apps and see which ones Morphe can patch.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
     "@capacitor/core": "^7.0.0",
     "@material/material-color-utilities": "^0.3.0",
     "idb": "^8.0.0",

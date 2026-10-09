@@ -525,20 +525,8 @@
   }
 }
 
-@keyframes md-sheet-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
 .animate-enter {
   animation: md-enter var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-emphasized-decelerate) both;
-}
-.animate-sheet-up {
-  animation: md-sheet-up var(--md-sys-motion-duration-long) var(--md-sys-motion-easing-emphasized-decelerate) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

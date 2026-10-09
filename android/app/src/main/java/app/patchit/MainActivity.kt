@@ -16,6 +16,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(AppScannerPlugin::class.java)
         registerPlugin(SystemThemePlugin::class.java)
         registerPlugin(MorpheBridgePlugin::class.java)
+        registerPlugin(AppUpdaterPlugin::class.java)
 
         super.onCreate(savedInstanceState)
     }

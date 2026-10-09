@@ -33,6 +33,8 @@ anything itself.
 - **Sets Morphe up** — sends the covering repositories to Morphe Manager through
   its real `add-source` deep link. Sources are offered even when they don't match
   your build, so you can update or downgrade and come back.
+- **Updates itself** — checks GitHub Releases on launch and installs newer
+  versions in-app. Android still shows its own installer and asks you to confirm.
 - **Material You 3** — wallpaper-derived colour, alternate palettes, AMOLED black,
   themed launcher icon.
 - **Explains itself** — a 500-entry diagnostics log with every registry warning.
@@ -65,7 +67,10 @@ npm run verify:theme     # measures every colour pair for WCAG contrast
 
 - `QUERY_ALL_PACKAGES` — required to enumerate installed apps, which is the whole
   point of the app. Without it Android 11+ only exposes a handful of packages.
-- `INTERNET` — fetching the patch indexes.
+- `INTERNET` — fetching the patch indexes and checking for updates.
+- `REQUEST_INSTALL_PACKAGES` — required to hand a downloaded update to Android's
+  package installer. You also have to grant PatchIt "install unknown apps" before
+  Android will accept it, and the installer always asks for confirmation.
 
 ## Licence
 

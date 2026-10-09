@@ -14,6 +14,7 @@ import { buildIndex, evaluateAll, type AppMatch, type RegistryIndex } from '@/co
 import { log } from '@/diagnostics/logger';
 import { kvGet, kvSet, persistStorage, readSnapshot, readIcon, writeIcons } from '@/registry/cache';import { httpGet } from '@/registry/http';
 import { loadBundledSnapshot } from '@/registry/seed';
+import { checkForUpdate, type UpdateState } from '@/native/updater';
 import { defaultSources, makeCustomSource, resolveInput } from '@/registry/sources';
 import { syncRegistry, type SyncProgress } from '@/registry/sync';
 import type { PatchSource, RegistrySnapshot } from '@/registry/schema';
@@ -89,8 +90,11 @@ export interface StoreValue {
   lastScanAt: number | null;
   lastSyncAt: number | null;
   error: string | null;
+  /** Latest-release state, checked once on launch and on demand. */
+  update: UpdateState;
 
   sync: (options?: { force?: boolean }) => Promise<void>;
+  recheckUpdate: () => void;
   rescan: () => Promise<void>;
   addSource: (input: string) => Promise<{ ok: boolean; message: string }>;
   removeSource: (id: string) => Promise<void>;
@@ -119,6 +123,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [lastScanAt, setLastScanAt] = useState<number | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [update, setUpdate] = useState<UpdateState>({ kind: 'idle' });
 
   // Icons are held outside React state: a 300-entry map of data URIs would make
   // every unrelated state change expensive to diff.
@@ -419,6 +424,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const recheckUpdate = useCallback(() => {
+    setUpdate({ kind: 'checking' });
+    void checkForUpdate().then(setUpdate);
+  }, []);
+
   const findMorphe = useCallback(async () => {
     try {
       const { installs } = await MorpheBridge.findMorpheInstalls();
@@ -445,6 +455,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void rescan();
     void sync();
     void findMorphe();
+    // Checked here rather than in a screen, so switching tabs cannot fire a
+    // second request against GitHub's 60-an-hour unauthenticated limit.
+    recheckUpdate();
     // Intentionally once, on ready.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
@@ -471,7 +484,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       lastScanAt,
       lastSyncAt,
       error,
+      update,
       sync,
+      recheckUpdate,
       rescan,
       addSource,
       removeSource,
@@ -499,7 +514,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       lastScanAt,
       lastSyncAt,
       error,
+      update,
       sync,
+      recheckUpdate,
       rescan,
       addSource,
       removeSource,

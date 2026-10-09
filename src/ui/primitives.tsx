@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -13,6 +14,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Icon, type IconName } from './icons';
+import { useDismissableLayer } from './layers';
 
 /**
  * Material 3 component primitives.
@@ -692,6 +694,8 @@ export interface DialogProps {
 export function Dialog({ open, onClose, icon, title, children, actions }: DialogProps) {
   const ref = useRef<HTMLDivElement>(null);
 
+  useDismissableLayer(open, onClose);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -734,7 +738,7 @@ export function Dialog({ open, onClose, icon, title, children, actions }: Dialog
 }
 
 /* ------------------------------------------------------------------ *
- * BottomSheet — M3 modal bottom sheet with a drag handle
+ * BottomSheet — M3 modal sheet with pull-to-dismiss
  * ------------------------------------------------------------------ */
 
 export function BottomSheet({
@@ -750,8 +754,59 @@ export function BottomSheet({
   children: ReactNode;
   fullHeight?: boolean;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const dragState = useRef<{ startY: number; offset: number } | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Drag state lives in a ref, not state.
+   *
+   * A pointermove fires ~60 times a second, and re-rendering a sheet with a
+   * page of patch rows in it that often is how a drag becomes a slideshow. The
+   * offset is written straight to the element's transform instead.
+   */
+  const dragRef = useRef<{ pointerId: number; startY: number; active: boolean } | null>(null);
+  const offsetRef = useRef(0);
+
+  useDismissableLayer(open, onClose);
+
+  /**
+   * Entrance and drag share `transform`, which is the whole reason this is a
+   * transition rather than a CSS animation.
+   *
+   * The sheet used to enter with `animation: md-sheet-up ... both`. A fill-mode
+   * of `both` keeps the final keyframe applied after the animation ends — and
+   * CSS animations outrank inline styles in the cascade — so every
+   * `style.transform` the drag wrote was silently overridden. The handle was
+   * visible and completely inert.
+   *
+   * With a transition there is one owner of the property and both behaviours
+   * compose.
+   */
+  const apply = useCallback((offset: number, animate: boolean) => {
+    const el = sheetRef.current;
+    if (!el) return;
+    el.style.transition = animate
+      ? 'transform var(--md-sys-motion-duration-long) var(--md-sys-motion-easing-emphasized-decelerate)'
+      : 'none';
+    el.style.transform = `translateY(${Math.max(0, offset)}px)`;
+  }, []);
+
+  // `useLayoutEffect`, so the sheet is off-screen before the first paint rather
+  // than flashing at its final position for a frame.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const el = sheetRef.current;
+    if (!el) return;
+
+    offsetRef.current = el.offsetHeight || 600;
+    apply(offsetRef.current, false);
+
+    const frame = requestAnimationFrame(() => {
+      offsetRef.current = 0;
+      apply(0, true);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, apply]);
 
   useEffect(() => {
     if (!open) return;
@@ -763,26 +818,133 @@ export function BottomSheet({
   }, [open, onClose]);
 
   const onPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    dragState.current = { startY: event.clientY, offset: 0 };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    if (dragRef.current) return;
+
+    const scroller = scrollerRef.current;
+    const fromContent = scroller ? scroller.contains(event.target as Node) : false;
+
+    // A pull from inside the list only belongs to the sheet when the list is
+    // already at the top. Anywhere else the gesture is a scroll, and stealing it
+    // would make a long patch list impossible to read.
+    if (fromContent && (scroller?.scrollTop ?? 0) > 0) return;
+
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      // From the header the intent is unambiguous, so capture immediately.
+      active: !fromContent,
+    };
+    if (!fromContent) event.currentTarget.setPointerCapture(event.pointerId);
   }, []);
 
-  const onPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragState.current) return;
-    const offset = Math.max(0, event.clientY - dragState.current.startY);
-    dragState.current.offset = offset;
-    if (scrollRef.current) scrollRef.current.style.transform = `translateY(${offset}px)`;
-  }, []);
+  const onPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
 
-  const onPointerUp = useCallback(() => {
-    const dragged = dragState.current?.offset ?? 0;
-    dragState.current = null;
-    if (scrollRef.current) {
-      scrollRef.current.style.transform = '';
+      const delta = event.clientY - drag.startY;
+
+      if (!drag.active) {
+        // Content-originated: wait until the pull is unmistakably downward
+        // before claiming it, so a tap or a flick upward still scrolls.
+        if (delta > 10 && (scrollerRef.current?.scrollTop ?? 0) <= 0) {
+          drag.active = true;
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } else {
+          return;
+        }
+      }
+
+      offsetRef.current = Math.max(0, delta);
+      apply(offsetRef.current, false);
+    },
+    [apply],
+  );
+
+  /** Decide whether a finished drag dismisses the sheet or snaps it back. */
+  const settle = useCallback(() => {
+    const travelled = offsetRef.current;
+    const height = sheetRef.current?.offsetHeight ?? 600;
+
+    // Distance only; no velocity term. A flick that travels 30px and stops is a
+    // hesitation, not a dismissal, and firing on it loses people's place.
+    if (travelled > Math.min(140, height * 0.25)) {
+      offsetRef.current = height;
+      apply(height, true);
+      window.setTimeout(onClose, 180);
+    } else {
+      offsetRef.current = 0;
+      apply(0, true);
     }
-    // A drag of more than 120px is a dismissal, not an overshoot.
-    if (dragged > 120) onClose();
-  }, [onClose]);
+  }, [apply, onClose]);
+
+  const endDrag = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      dragRef.current = null;
+      if (!drag.active) return;
+      settle();
+    },
+    [settle],
+  );
+
+  /**
+   * Pull-to-dismiss from the list itself, not just the handle.
+   *
+   * Pointer events cannot do this job: once the browser decides a gesture is a
+   * scroll it fires `pointercancel`, so a pull from the content was silently
+   * abandoned a few pixels in. Owning it means listening to touch directly with
+   * `{ passive: false }` and calling `preventDefault()` to stop the scroll — but
+   * *only* for a downward pull that begins with the list already at the top.
+   * Anywhere else the gesture is left alone, because a patch list you cannot
+   * scroll is a far worse bug than a sheet you cannot flick away.
+   */
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!open || !scroller) return;
+
+    let startY = 0;
+    let engaged = false;
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+      startY = event.touches[0].clientY;
+      engaged = false;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+      const delta = event.touches[0].clientY - startY;
+
+      if (!engaged) {
+        if (delta > 10 && scroller.scrollTop <= 0) engaged = true;
+        else return;
+      }
+
+      event.preventDefault();
+      offsetRef.current = Math.max(0, delta);
+      apply(offsetRef.current, false);
+    };
+
+    const onTouchEnd = () => {
+      if (!engaged) return;
+      engaged = false;
+      settle();
+    };
+
+    scroller.addEventListener('touchstart', onTouchStart, { passive: true });
+    scroller.addEventListener('touchmove', onTouchMove, { passive: false });
+    scroller.addEventListener('touchend', onTouchEnd);
+    scroller.addEventListener('touchcancel', onTouchEnd);
+
+    return () => {
+      scroller.removeEventListener('touchstart', onTouchStart);
+      scroller.removeEventListener('touchmove', onTouchMove);
+      scroller.removeEventListener('touchend', onTouchEnd);
+      scroller.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [open, apply, settle]);
 
   if (!open) return null;
 
@@ -790,25 +952,27 @@ export function BottomSheet({
     <div className="fixed inset-0 z-40 flex flex-col justify-end">
       <div className="absolute inset-0 bg-scrim/50" onClick={onClose} aria-hidden="true" />
       <div
-        ref={scrollRef}
+        ref={sheetRef}
         className={cx(
           // Large (16px) top corners, per the shape scale's sheet role.
-          'md-sheet animate-sheet-up relative flex flex-col rounded-t-lg bg-surface-container-low',
+          'md-sheet relative flex flex-col rounded-t-lg bg-surface-container-low',
           fullHeight ? 'md-sheet-tall' : 'md-sheet-auto',
         )}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
-        <div
-          className="flex flex-none cursor-grab touch-none flex-col items-center pt-2 active:cursor-grabbing"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-        >
+        <div className="flex flex-none cursor-grab touch-none flex-col items-center pt-2 active:cursor-grabbing">
           <div className="h-1 w-8 rounded-full bg-on-surface-variant/40" />
           {title && (
             <h2 className="md-title-large w-full px-6 pb-2 pt-4 text-on-surface">{title}</h2>
           )}
         </div>
-        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(var(--safe-bottom)+16px)]">
+        <div
+          ref={scrollerRef}
+          className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(var(--safe-bottom)+16px)]"
+        >
           {children}
         </div>
       </div>

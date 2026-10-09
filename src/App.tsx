@@ -1,3 +1,5 @@
+import { App as CapacitorApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from 'react';
 import { installGlobalHandlers, log } from '@/diagnostics/logger';
 import { AppsScreen } from '@/screens/AppsScreen';
@@ -8,6 +10,7 @@ import { StoreProvider, useStore } from '@/state/store';
 import { ThemeProvider } from '@/theme/ThemeProvider';
 import { NavigationBar, type Destination } from '@/ui/layout';
 import { Button, EmptyState, SnackbarProvider } from '@/ui/primitives';
+import { dismissTopLayer, useDismissableLayer } from '@/ui/layers';
 
 /**
  * Shell and providers.
@@ -18,6 +21,46 @@ import { Button, EmptyState, SnackbarProvider } from '@/ui/primitives';
  *   StoreProvider     owns scan/sync state, so it renders inside both
  *   ErrorBoundary     wraps only the screens, keeping navigation alive through a crash
  */
+/**
+ * Route Android's back gesture to the topmost layer, then to the platform.
+ *
+ * Without this, back finishes the activity outright — `BridgeActivity` inherits
+ * `AppCompatActivity`'s default and Capacitor never intercepts it, so opening an
+ * app's details and pressing back dropped you to the home screen with the sheet
+ * still open underneath.
+ *
+ * `minimizeApp` rather than `exitApp` for the empty case: back at the root of an
+ * Android app should put it in the background, the same as the home gesture, not
+ * kill the process.
+ */
+function useAndroidBackButton(): void {
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let handle: { remove: () => Promise<void> } | undefined;
+    let disposed = false;
+
+    void CapacitorApp.addListener('backButton', () => {
+      if (dismissTopLayer()) return;
+      void CapacitorApp.minimizeApp().catch(() => {
+        // Nothing sensible to do if the platform refuses; the app stays put.
+      });
+    })
+      .then((registered) => {
+        if (disposed) void registered.remove();
+        else handle = registered;
+      })
+      .catch((error: unknown) => {
+        log.warn('shell', 'Could not register the back-button handler', error);
+      });
+
+    return () => {
+      disposed = true;
+      void handle?.remove();
+    };
+  }, []);
+}
+
 export default function App() {
   useEffect(() => installGlobalHandlers(), []);
 
@@ -37,6 +80,11 @@ export default function App() {
 function Shell() {
   const [destination, setDestination] = useState<Destination>('apps');
   const { logsOpen, setLogsOpen } = useStore();
+
+  // The overlay is rendered here rather than inside a screen, so it registers
+  // its own layer here too — otherwise back would skip past it to the platform.
+  useDismissableLayer(logsOpen, () => setLogsOpen(false));
+  useAndroidBackButton();
 
   /*
    * Three destinations, not four.

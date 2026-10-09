@@ -19,6 +19,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
+      Required on API 26+ to hand a downloaded APK to the package installer.
+      The user still has to grant PatchIt "install unknown apps" in Settings
+      before Android will accept the hand-off, and the installer shows its own
+      confirmation either way — this is not a silent self-update.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!--
       Explicit package visibility. QUERY_ALL_PACKAGES covers this on stock
       Android, but declaring the interesting packages keeps `<queries>`
       resolution working on ROMs that treat the blanket permission loosely.

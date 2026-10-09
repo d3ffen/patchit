@@ -20,6 +20,7 @@ import {
   Switch,
 } from '@/ui/primitives';
 import { AppIcon, VERDICT_PRESENTATION, VerdictBadge } from '@/ui/indicators';
+import { UpdateSheet } from '@/ui/updater';
 
 /**
  * The main list: every installed app, with its patchability decided.
@@ -51,10 +52,13 @@ export function AppsScreen() {
     snapshot,
     error,
     setLogsOpen,
+    update,
+    recheckUpdate,
   } = useStore();
 
   const [selected, setSelected] = useState<AppMatch | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
 
   const patchable = useMemo(() => matches.filter((m) => m.verdict !== 'no-patches').length, [matches]);
   const verified = useMemo(() => matches.filter((m) => m.verdict === 'supported').length, [matches]);
@@ -130,6 +134,22 @@ export function AppsScreen() {
       }
       fab={<Fab icon="refresh" label="Rescan packages" onClick={() => void rescan()} />}
     >
+      {update.kind === 'available' && (
+        <div className="px-4 pt-4">
+          <button
+            type="button"
+            onClick={() => setUpdateOpen(true)}
+            className="state-layer flex w-full items-center gap-3 rounded-md bg-primary-container px-4 py-3 text-left text-on-primary-container"
+          >
+            <Icon name="update" size={20} className="flex-none" />
+            <span className="md-body-medium flex-1">
+              PatchIt {update.release.version} is available.
+            </span>
+            <Icon name="chevron-right" size={20} className="flex-none" />
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="mx-4 mt-4 flex items-start gap-3 rounded-md bg-error-container px-4 py-3 text-on-error-container">
           <Icon name="warning" size={20} className="mt-0.5 flex-none" />
@@ -228,6 +248,20 @@ export function AppsScreen() {
         onClose={() => setFiltersOpen(false)}
         activeFilterCount={activeFilterCount}
       />
+
+      {update.kind === 'available' && (
+        <UpdateSheet
+          open={updateOpen}
+          onClose={() => {
+            setUpdateOpen(false);
+            // After a successful install this build keeps running until Android
+            // restarts it, so re-check rather than keep offering the same one.
+            recheckUpdate();
+          }}
+          release={update.release}
+          currentVersionLabel={update.current}
+        />
+      )}
     </Scaffold>
   );
 }
