@@ -89,6 +89,108 @@ function normalizeSignatures(raw: unknown): string[] | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
+/**
+ * Compatibility in a patch list, across every shape found in the wild.
+ *
+ * Morphe's own generator emits `compatiblePackages: [{ packageName, targets }]`,
+ * and for a long time that was the only shape this parser accepted. It is not
+ * the only shape that exists. Sampling the wider ecosystem turns up three more,
+ * and coercing them to `null` — which is what the previous version did — means
+ * "this patch applies to any app". That silently relabelled 86 app-specific
+ * patches in one source as universal, which is how a bug report arrived saying
+ * PatchIt gave false results.
+ *
+ * The four shapes:
+ *
+ *   1. `[{ packageName, name, targets: [{ version, versionCodes }] }]`  ← Morphe
+ *   2. `{ "com.pkg": ["1.0.0", ...] }`                          ← flat map
+ *   3. `["com.pkg", ...]`                            ← names only, no versions
+ *   4. absent / null                                     ← genuinely universal
+ *
+ * A sibling `compatibility` field, which some generators also write, carries the
+ * same information as shape 1 *plus* signing certificates, so it is preferred
+ * when present.
+ */
+function parseRichCompatibility(raw: unknown): OfficialCompatibility[] | null {
+  if (!Array.isArray(raw)) return null;
+  const entries = raw.filter(isRecord);
+  // Only trust it if every entry actually names a package — otherwise this is
+  // some other field that happens to be called `compatibility`.
+  if (entries.length === 0 || !entries.every((e) => typeof e.packageName === 'string')) return null;
+  return entries as unknown as OfficialCompatibility[];
+}
+
+function parseCompatiblePackages(
+  raw: unknown,
+  patchName: string,
+  warnings: string[],
+): OfficialCompatibility[] | null {
+  if (raw === null || raw === undefined) return null;
+
+  if (Array.isArray(raw)) {
+    const objects = raw.filter(isRecord);
+    if (objects.length > 0) return objects as unknown as OfficialCompatibility[];
+
+    const names = raw.filter((entry): entry is string => typeof entry === 'string');
+    if (names.length > 0) {
+      warnings.push(
+        `patch "${patchName}": compatiblePackages lists package names without versions, so every build counts as untested`,
+      );
+      return names.map((packageName) => ({
+        packageName,
+        name: null,
+        description: null,
+        apkFileType: null,
+        appIconColor: null,
+        signatures: null,
+        targets: [],
+      }));
+    }
+    return null;
+  }
+
+  if (isRecord(raw)) {
+    const out: OfficialCompatibility[] = [];
+    for (const [packageName, versions] of Object.entries(raw)) {
+      // Guard against a nested object being mistaken for a package name.
+      if (!packageName.includes('.')) continue;
+      const list = Array.isArray(versions)
+        ? versions.filter((v): v is string => typeof v === 'string')
+        : [];
+      out.push({
+        packageName,
+        name: null,
+        description: null,
+        apkFileType: null,
+        appIconColor: null,
+        signatures: null,
+        targets: list.map((version) => ({
+          version,
+          versionCodes: null,
+          isExperimental: false,
+          minSdk: null,
+          description: null,
+        })),
+      });
+    }
+    if (out.length > 0) return out;
+  }
+
+  /*
+   * Unreadable.
+   *
+   * An empty array, not null. `null` means "declares no packages" and is what
+   * makes a patch universal — claiming that for a patch which clearly *did*
+   * declare packages is exactly the bug this function exists to fix. An empty
+   * array keeps the patch out of both the per-app index and the universal list,
+   * and the warning above says why.
+   */
+  warnings.push(
+    `patch "${patchName}": compatiblePackages has a shape this version of PatchIt cannot read, so the patch is left out rather than guessed at`,
+  );
+  return [];
+}
+
 export interface ParseResult<T> {
   value: T;
   warnings: string[];
@@ -107,19 +209,20 @@ export function parseOfficialList(raw: unknown): ParseResult<OfficialPatchList> 
   }
   const warnings: string[] = [];
   const parsed = patches.map((p) => {
-    const compatiblePackages = p.compatiblePackages;
-    if (compatiblePackages !== null && !Array.isArray(compatiblePackages) && compatiblePackages !== undefined) {
-      warnings.push(`official patch "${String(p.name)}": compatiblePackages is not an array`);
-    }
+    const patchName = asString(p.name) ?? 'unnamed';
+
+    // `compatibility` carries the same list as `compatiblePackages` plus signing
+    // certificates, so it wins when it is present and well-formed.
+    const rich = parseRichCompatibility(p.compatibility);
+    const compatiblePackages = rich ?? parseCompatiblePackages(p.compatiblePackages, patchName, warnings);
+
     return {
       name: asString(p.name),
       description: asString(p.description),
       default: asBool(p.default, true),
       category: asString(p.category),
       dependencies: asArray<string>(p.dependencies).filter((d) => typeof d === 'string'),
-      compatiblePackages: Array.isArray(compatiblePackages)
-        ? (compatiblePackages.filter(isRecord) as unknown as OfficialCompatibility[])
-        : null,
+      compatiblePackages: compatiblePackages as OfficialCompatibility[] | null,
       options: asArray<unknown>(p.options).filter(isRecord).map((o) => ({
         key: asString(o.key) ?? '',
         title: asString(o.title),

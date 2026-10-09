@@ -263,6 +263,161 @@ check(
 );
 
 /* ------------------------------------------------------------------ *
+ * Compatibility shapes
+ * ------------------------------------------------------------------ *
+ *
+ * A patch list can declare compatible packages in four different shapes, and
+ * this parser used to accept one of them — coercing the rest to `null`, which
+ * means "universal". A user reported PatchIt giving false results on Facebook;
+ * the cause was a source whose 86 app-specific patches were all relabelled as
+ * applying to any app. These fixtures are that report, reduced to a table.
+ */
+
+section('Compatibility shapes');
+
+const SHAPE_CASES: {
+  label: string;
+  patch: Record<string, unknown>;
+  expectUniversal: boolean;
+  expectPackages: string[];
+  expectVersions: string[];
+}[] = [
+  {
+    label: 'Morphe schema — array of objects',
+    patch: {
+      name: 'Hide ads',
+      compatiblePackages: [
+        { packageName: 'com.example.app', name: 'Example', targets: [{ version: '1.2.3', versionCodes: { 'arm64-v8a': 123 } }] },
+      ],
+    },
+    expectUniversal: false,
+    expectPackages: ['com.example.app'],
+    expectVersions: ['1.2.3'],
+  },
+  {
+    label: 'flat map — { pkg: [versions] }',
+    patch: { name: 'Hide ads', compatiblePackages: { 'com.example.app': ['1.2.3', '1.2.4'] } },
+    expectUniversal: false,
+    expectPackages: ['com.example.app'],
+    expectVersions: ['1.2.3', '1.2.4'],
+  },
+  {
+    label: 'array of package names — no versions',
+    patch: { name: 'Hide ads', compatiblePackages: ['com.example.app'] },
+    expectUniversal: false,
+    expectPackages: ['com.example.app'],
+    expectVersions: [],
+  },
+  {
+    label: 'absent — genuinely universal',
+    patch: { name: 'Change package name' },
+    expectUniversal: true,
+    expectPackages: [],
+    expectVersions: [],
+  },
+  {
+    label: 'explicit null — universal',
+    patch: { name: 'Change package name', compatiblePackages: null },
+    expectUniversal: true,
+    expectPackages: [],
+    expectVersions: [],
+  },
+];
+
+for (const testCase of SHAPE_CASES) {
+  const warnings: string[] = [];
+  const list = parseOfficialList({ version: '1', patches: [testCase.patch] });
+  const bundle = convert(
+    source(`probe:${testCase.label}`, 'custom', 'https://example.invalid', 'owner/repo'),
+    { version: '1', patches: [testCase.patch] },
+    warnings,
+  ).bundles[0];
+
+  const patch = bundle.patches[0];
+  const packages = patch.compatibilities.map((c) => c.packageName);
+  const versions = patch.compatibilities.flatMap((c) => c.targets.map((t) => t.version));
+
+  const ok =
+    patch.universal === testCase.expectUniversal &&
+    JSON.stringify(packages) === JSON.stringify(testCase.expectPackages) &&
+    JSON.stringify(versions) === JSON.stringify(testCase.expectVersions);
+
+  check(
+    testCase.label,
+    ok,
+    ok
+      ? `universal=${patch.universal} packages=${packages.length} versions=${versions.length}`
+      : `got universal=${patch.universal} packages=${JSON.stringify(packages)} versions=${JSON.stringify(versions)}`,
+  );
+  // A parse failure on a known shape should never spam the log.
+  if (list.warnings.length > 0 && !testCase.label.startsWith('array of package names')) {
+    check(`${testCase.label} — parses without warnings`, false, list.warnings.join(' | '));
+  }
+}
+
+/*
+ * The field some generators write alongside `compatiblePackages`. It carries the
+ * same list plus signing certificates, so it should win.
+ */
+{
+  const raw = {
+    version: '1',
+    patches: [
+      {
+        name: 'Hide ads',
+        compatiblePackages: { 'com.example.app': ['9.9.9'] },
+        compatibility: [
+          {
+            packageName: 'com.example.app',
+            name: 'Example',
+            targets: [{ version: '1.2.3' }],
+            signatures: ['ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789'],
+          },
+        ],
+      },
+    ],
+  };
+  const bundle = convert(
+    source('probe:rich', 'custom', 'https://example.invalid', 'owner/repo'),
+    raw,
+    [],
+  ).bundles[0];
+  const versions = bundle.patches[0].compatibilities.flatMap((c) => c.targets.map((t) => t.version));
+  check(
+    '`compatibility` is preferred over `compatiblePackages`',
+    versions.length === 1 && versions[0] === '1.2.3',
+    `versions=${JSON.stringify(versions)}`,
+  );
+  check(
+    'signing certificates survive parsing',
+    bundle.patches[0].compatibilities[0].signatures?.length === 1,
+  );
+}
+
+/*
+ * The regression itself. An unreadable declaration must NOT become universal —
+ * that is the whole bug — and it must say so out loud.
+ */
+{
+  const warnings: string[] = [];
+  const bundle = convert(
+    source('probe:unknown', 'custom', 'https://example.invalid', 'owner/repo'),
+    { version: '1', patches: [{ name: 'Weird', compatiblePackages: 42 }] },
+    warnings,
+  ).bundles[0];
+  check(
+    'an unreadable shape is not relabelled as universal',
+    bundle.patches[0].universal === false,
+    `universal=${bundle.patches[0].universal}`,
+  );
+  check(
+    'and it is reported rather than swallowed',
+    warnings.length > 0 && warnings[0].includes('cannot read'),
+    warnings[0] ?? 'no warning',
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * The bundled offline seed
  * ------------------------------------------------------------------ */
 

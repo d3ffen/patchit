@@ -1,0 +1,50 @@
+# Dependabot configuration.
+#
+# Alerts were previously off entirely, which is how a dependency tree quietly
+# ages. PatchIt's runtime dependencies are few and boring, but "few and boring"
+# is exactly the state you want a machine watching, not a human remembering.
+version: 2
+updates:
+  # The web/JS half. Capacitor majors move together, so group them: a lone
+  # @capacitor/core bump against @capacitor/android is a broken build, not an
+  # upgrade.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      capacitor:
+        patterns:
+          - '@capacitor/*'
+      react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+      build:
+        patterns:
+          - 'vite'
+          - '@vitejs/plugin-react'
+          - 'typescript'
+          - 'tailwindcss'
+          - '@tailwindcss/vite'
+
+  # The Gradle half. AGP and the Kotlin plugin are version-locked to each other
+  # and to the JDK the toolchain provides, so they are grouped too.
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      android-build:
+        patterns:
+          - 'com.android.tools.build:gradle'
+          - 'org.jetbrains.kotlin*'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

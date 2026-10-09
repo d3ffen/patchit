@@ -1,7 +1,7 @@
 {
   "name": "patchit",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.3",
   "type": "module",
   "description": "Scan your Android apps and see which ones Morphe can patch.",
   "scripts": {

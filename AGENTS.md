@@ -17,7 +17,7 @@ actually patch, then hands the covering patch **sources** to Morphe Manager.
 decides *how*. Do not add code that patches or installs apps.
 
 - Public repo: `github.com/d3ffen/patchit`
-- Current release: **v1.0.2** (self-signed APK on GitHub Releases + in-app updater)
+- Current release: **v1.0.3** (self-signed APK on GitHub Releases + in-app updater)
 - Licence: GPL-3.0
 
 ---
@@ -186,7 +186,8 @@ There is no `signingConfig` in Gradle — signing is a post-build step, so no
 credentials are in the tree:
 
 ```bash
-# 1. bump versionCode/versionName in android/app/build.gradle
+# 1. bump BOTH: versionCode/versionName in android/app/build.gradle and `version`
+#    in package.json. They have drifted before; nothing enforces it.
 npm run build:release && npx cap sync android
 cd android && ./gradlew assembleRelease
 BT=~/Downloads/.android-sdk/build-tools/35.0.0
@@ -266,8 +267,10 @@ watched completing end to end.
   PatchIt does not mention it. Planned: say so in the confirmation, default to
   sources that *match* the installed version, and let the user pick.
 - No CI. Releases are manual and have already produced one signature mismatch.
-- No unit tests for the verdict engine; no UI/screenshot tests. The two bugs users
-  reported were both invisible to types, builds and the existing suites.
+- The verdict engine itself still has no unit tests; `verify:registry` covers the
+  parsers, version comparison and cold start, but not `evaluatePatch` in
+  isolation. There are no UI tests either — the two bugs users reported were both
+  invisible to types, builds and the suites.
 - R8 off → ~3.6 MB where ~1.5 MB is achievable.
 
 **Do not** rewrite or repack a third-party `.mpp` to filter apps. A `.mpp` is a JAR
