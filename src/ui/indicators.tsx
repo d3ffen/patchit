@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SignatureVerdict, Verdict } from '@/core/compatibility';
 import { useStore } from '@/state/store';
 import { Icon, type IconName } from './icons';
@@ -96,6 +96,15 @@ export function SignatureBadge({ verdict }: { verdict: SignatureVerdict }) {
  * the icon genuinely cannot be read (a system package, a removed app), it is the
  * final state, and it is deliberately good-looking rather than a grey box.
  */
+/**
+ * How long an icon must stay on screen before its image is requested.
+ *
+ * Installed apps answer from memory, so this only really gates the Play Store
+ * lookups — each of which costs a megabyte of HTML. It exists to stop a fast
+ * scroll from queueing artwork for rows that were never read.
+ */
+const ICON_DWELL_MS = 250;
+
 export function AppIcon({
   packageName,
   label,
@@ -109,17 +118,67 @@ export function AppIcon({
 }) {
   const { loadIcon } = useStore();
   const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const holderRef = useRef<HTMLElement | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  /*
+   * Icons load only once their row is actually on screen.
+   *
+   * Rendering the registry browser mounts several hundred icons in one commit.
+   * Installed apps survive that because their icons come from memory, but a
+   * package that is *not* installed sends each one to the Play Store — and
+   * fetching a megabyte of HTML per row took the app down. Gating on visibility
+   * means only the handful a person can actually see are ever requested.
+   *
+   * The observer is created once per icon and disconnects on first hit: an icon
+   * that has scrolled away and back should not re-enter the queue.
+   */
+  useEffect(() => {
+    const node = holderRef.current;
+    if (!node) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      // Start a little before the row arrives so it is ready when it lands.
+      { rootMargin: '200px 0px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
+    if (!visible) return;
     let cancelled = false;
-    setDataUrl(null);
-    void loadIcon(packageName, 128).then((url) => {
-      if (!cancelled) setDataUrl(url);
-    });
+
+    /*
+     * Wait a beat before asking for the icon.
+     *
+     * Flicking through the registry can put dozens of rows on screen for a few
+     * frames each, and every one of those would start a Play Store lookup. A
+     * row that is still here after a quarter of a second is one somebody is
+     * actually looking at.
+     */
+    const timer = window.setTimeout(() => {
+      void loadIcon(packageName, 128).then((url) => {
+        if (!cancelled) setDataUrl(url);
+      });
+    }, ICON_DWELL_MS);
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [loadIcon, packageName]);
+  }, [loadIcon, packageName, visible]);
 
   const monogram = label
     .replace(/[^\p{L}\p{N} ]/gu, '')
@@ -145,6 +204,9 @@ export function AppIcon({
   if (dataUrl) {
     return (
       <img
+        ref={(node) => {
+          holderRef.current = node;
+        }}
         src={dataUrl}
         alt=""
         width={size}
@@ -159,6 +221,9 @@ export function AppIcon({
 
   return (
     <div
+      ref={(node) => {
+        holderRef.current = node;
+      }}
       className={cx('app-icon-tile bg-secondary-container text-on-secondary-container', className)}
       style={{ width: size, height: size, fontSize: size * 0.38 }}
       aria-hidden="true"

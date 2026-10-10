@@ -142,7 +142,15 @@
   --md-state-dragged: 0.16;
 
   /* --- Layout ----------------------------------------------------- */
+  /*
+   * Vertical space the navigation dock occupies, measured from the bottom of the
+   * screen: 64px of dock plus the 16px gap above the safe area. That is the same
+   * total the old edge-to-edge bar used, so the content padding and the snackbar,
+   * which both measure from this token, did not have to move.
+   */
   --app-nav-height: 80px;
+  --app-nav-inset: 16px;
+  --app-nav-gap: 8px;
   --app-topbar-height: 64px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -493,6 +501,64 @@
     border-radius: var(--md-sys-shape-full);
     background-color: var(--md-sys-color-surface-container-high);
     color: var(--md-sys-color-on-surface);
+  }
+
+  /*
+   * M3 navigation bar.
+   *
+   * Three destinations across the full width, each an icon over a 12sp label
+   * sitting inside a 64x32 state pill. The measurements live here rather than in
+   * the JSX for the same reason every other component measures itself from
+   * tokens: one definition, changed in one place.
+   *
+   * 80px is the M3 bar height above the system inset; the safe-area padding is
+   * added by the component, not here, because only it knows the inset.
+   */
+  /*
+   * Three separate pills, not one bar with three compartments.
+   *
+   * The container is only a positioning wrapper now — it owns where the row sits
+   * and the gaps between the pills, and nothing visual. Each pill carries its own
+   * surface, edge and elevation, so they read as three floating targets rather
+   * than as segments of one control.
+   */
+  .md-nav-bar {
+    block-size: 64px;
+    inset-inline: var(--app-nav-inset);
+    inset-block-end: calc(var(--safe-bottom) + var(--app-nav-inset));
+    gap: var(--app-nav-gap);
+  }
+
+  .md-nav-pill {
+    /* Full height of the row: past the 48px minimum touch target, with no label
+       under the icon to enlarge it. */
+    min-block-size: 64px;
+    border-radius: var(--md-sys-shape-full);
+  }
+
+  /*
+   * Floating search bar.
+   *
+   * Sticky inside the scrolling body, with a negative bottom margin equal to its
+   * own height (56px pill + 8px above + 12px below). The list therefore starts
+   * *underneath* the bar and scrolls past behind it, which is what makes it read
+   * as floating over the content rather than as another row in it.
+   *
+   * The pointer-events dance matters: the wrapper spans the full width and its
+   * padding is transparent, so without it the gutter would swallow taps meant
+   * for the list underneath.
+   */
+  .md-floating-search {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 20;
+    padding: 8px 16px 12px;
+    margin-block-end: -76px;
+    pointer-events: none;
+  }
+
+  .md-floating-search > * {
+    pointer-events: auto;
   }
 
   /* M3 list item heights: 56dp one-line, 72dp two-line, 88dp three-line. */

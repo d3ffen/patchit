@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AppMatch } from '@/core/compatibility';
 import { useStore } from '@/state/store';
 import { AppDetail } from '@/screens/AppDetail';
@@ -18,9 +18,13 @@ import {
   SearchBar,
   Segmented,
   Switch,
+  useSnackbar,
 } from '@/ui/primitives';
 import { AppIcon, VERDICT_PRESENTATION, VerdictBadge } from '@/ui/indicators';
 import { UpdateSheet } from '@/ui/updater';
+import type { BrowseEntry } from '@/state/store';
+import type { RegistryPackage } from '@/core/compatibility';
+import { addRepoToMorphe } from '@/core/morphe';
 
 /**
  * The main list: every installed app, with its patchability decided.
@@ -35,9 +39,52 @@ import { UpdateSheet } from '@/ui/updater';
  * Filtering 300 rows during a render pass is exactly how a list like this
  * becomes janky on a mid-range device.
  */
+/**
+ * How many rows are mounted at once.
+ *
+ * A phone cannot usefully render a thousand list rows, and trying means a long
+ * stall on the main thread followed by a very large DOM. Pages of 60 keep the
+ * first paint quick; the sentinel below grows the window as the list is
+ * scrolled, so it behaves like an endless list without ever holding all of it.
+ */
+const PAGE_SIZE = 60;
+
+/**
+ * Grows the list when the end of it comes into view, with a button as backup.
+ *
+ * The button is not decoration: the observer can miss when the list is inside a
+ * container that has not settled yet, and a list that silently stops loading is
+ * worse than one that needs a tap.
+ */
+function LoadMore({ remaining, onLoadMore }: { remaining: number; onLoadMore: () => void }) {
+  const sentinel = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const node = sentinel.current;
+    if (!node || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+      },
+      { rootMargin: '400px 0px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [onLoadMore]);
+
+  return (
+    <div ref={sentinel} className="mt-4 flex flex-col items-center gap-2 px-4">
+      <p className="md-body-small text-on-surface-variant">{remaining} more</p>
+      <Button variant="tonal" icon="chevron-down" onClick={onLoadMore}>
+        Load more
+      </Button>
+    </div>
+  );
+}
+
 export function AppsScreen() {
   const {
-    filteredMatches,
     matches,
     filters,
     setFilters,
@@ -54,11 +101,20 @@ export function AppsScreen() {
     setLogsOpen,
     update,
     recheckUpdate,
+    browseEntries,
   } = useStore();
 
   const [selected, setSelected] = useState<AppMatch | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [registryPackage, setRegistryPackage] = useState<RegistryPackage | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // A new query, mode or sort is a different list — start it from the top again
+  // rather than leaving the window scrolled deep into results nobody has seen.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filters.browseMode, filters.query, filters.sort]);
 
   const patchable = useMemo(() => matches.filter((m) => m.verdict !== 'no-patches').length, [matches]);
   const verified = useMemo(() => matches.filter((m) => m.verdict === 'supported').length, [matches]);
@@ -119,6 +175,16 @@ export function AppsScreen() {
               />
             }
           />
+          <div className="px-4 pb-2">
+            <Segmented
+              value={filters.browseMode}
+              onChange={(browseMode) => setFilters({ browseMode })}
+              options={[
+                { value: 'installed', label: 'Installed' },
+                { value: 'all', label: 'All apps' },
+              ]}
+            />
+          </div>
           {(syncing || scanning) && (
             <ActivityBar
               label={
@@ -177,13 +243,15 @@ export function AppsScreen() {
         </div>
       )}
 
-      {filteredMatches.length === 0 ? (
+      {browseEntries.length === 0 ? (
         <EmptyState
           icon={filters.query ? 'search' : 'apps'}
           title={filters.query ? 'No matches' : 'Nothing to show'}
           body={
             filters.query
-              ? `No installed app matches “${filters.query}”.`
+              ? filters.browseMode === 'all'
+                ? `Nothing in the registry matches “${filters.query}”.`
+                : `No installed app matches “${filters.query}”. Switch to All apps to search the whole registry.`
               : filters.patchableOnly
                 ? 'No installed app has patches in the current registry. Try enabling system apps, or add a patch source.'
                 : 'Hit rescan to enumerate installed packages.'
@@ -205,21 +273,43 @@ export function AppsScreen() {
           <SectionHeader
             trailing={
               <span className="md-label-medium text-on-surface-variant">
-                {filteredMatches.length} app{filteredMatches.length === 1 ? '' : 's'}
+                {browseEntries.length}{' '}
+                {filters.browseMode === 'all'
+                  ? browseEntries.length === 1
+                    ? 'package'
+                    : 'packages'
+                  : browseEntries.length === 1
+                    ? 'app'
+                    : 'apps'}
               </span>
             }
           >
-            {filters.patchableOnly ? 'Patchable apps' : 'All installed apps'}
+            {filters.browseMode === 'all'
+              ? 'Installed and available'
+              : filters.patchableOnly
+                ? 'Patchable apps'
+                : 'All installed apps'}
           </SectionHeader>
 
           <Card variant="outlined" className="mx-4 overflow-hidden p-0">
-            {filteredMatches.map((match, index) => (
-              <div key={match.app.packageName}>
+            {browseEntries.slice(0, visibleCount).map((entry, index) => (
+              <div key={entry.packageName}>
                 {index > 0 && <Divider inset />}
-                <AppRow match={match} onClick={() => setSelected(match)} />
+                {entry.kind === 'installed' ? (
+                  <AppRow match={entry.match} onClick={() => setSelected(entry.match)} />
+                ) : (
+                  <RegistryRow entry={entry} onClick={() => setRegistryPackage(entry.info)} />
+                )}
               </div>
             ))}
           </Card>
+
+          {visibleCount < browseEntries.length && (
+            <LoadMore
+              remaining={browseEntries.length - visibleCount}
+              onLoadMore={() => setVisibleCount((count) => count + PAGE_SIZE)}
+            />
+          )}
 
           <div className="mt-6 px-4">
             <p className="md-body-small text-on-surface-variant">
@@ -231,6 +321,8 @@ export function AppsScreen() {
           </div>
         </>
       )}
+
+      <RegistryDetail info={registryPackage} onClose={() => setRegistryPackage(null)} />
 
       <AppDetail
         match={selected}
@@ -420,5 +512,157 @@ function ToggleRow({
       </div>
       <Switch checked={checked} onCheckedChange={onChange} label={label} />
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Registry-only rows
+ * ------------------------------------------------------------------ */
+
+/**
+ * A package the registry covers that is not installed here.
+ *
+ * There is no build to judge, so there is no verdict to show — inventing one
+ * would be the false-confidence this app exists to avoid. What it can honestly
+ * say is what is on offer: how many patches, and which builds they name.
+ */
+function RegistryRow({
+  entry,
+  onClick,
+}: {
+  entry: Extract<BrowseEntry, { kind: 'registry' }>;
+  onClick: () => void;
+}) {
+  const { info } = entry;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="md-list-item state-layer flex w-full items-center gap-4 px-4 py-3 text-left"
+    >
+      <AppIcon packageName={info.packageName} label={entry.label} size={48} />
+
+      <div className="min-w-0 flex-1">
+        <p className="md-body-large truncate text-on-surface">{entry.label}</p>
+        <p className="md-body-medium truncate text-on-surface-variant">
+          {info.packageName}
+        </p>
+        <p className="md-body-small mt-0.5 truncate text-on-surface-variant">
+          {info.newestVersion ? `Newest supported ${info.newestVersion}` : 'No versions declared'}
+        </p>
+      </div>
+
+      <div className="flex flex-none items-center gap-2">
+        <Badge tone="neutral">
+          <Icon name="extension" size={14} />
+          {info.patchCount}
+        </Badge>
+        <Icon name="chevron-right" size={20} className="text-on-surface-variant" />
+      </div>
+    </button>
+  );
+}
+
+/**
+ * The detail sheet for a package that is not installed.
+ *
+ * Mirrors the installed-app sheet where it can — same version chips, same source
+ * rows — but the header says plainly that the app is not here, because every
+ * "does this work for me?" question below it is unanswerable until it is.
+ */
+function RegistryDetail({
+  info,
+  onClose,
+}: {
+  info: RegistryPackage | null;
+  onClose: () => void;
+}) {
+  const { show } = useSnackbar();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(info !== null);
+  }, [info]);
+
+  if (!info) return null;
+
+  const label = info.name ?? info.packageName;
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title={label}>
+      <div className="px-6 pb-6">
+        <div className="flex items-center gap-4">
+          <AppIcon packageName={info.packageName} label={label} size={56} />
+          <div className="min-w-0 flex-1">
+            <p className="md-title-large truncate text-on-surface">{label}</p>
+            <p className="md-body-medium truncate text-on-surface-variant">{info.packageName}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge tone="neutral">
+            <Icon name="download" size={14} />
+            Not installed
+          </Badge>
+          <Badge tone="primary">
+            <Icon name="extension" size={14} />
+            {info.patchCount} patch{info.patchCount === 1 ? '' : 'es'}
+          </Badge>
+          <Badge tone="neutral">
+            <Icon name="source" size={14} />
+            {info.bundleCount} source{info.bundleCount === 1 ? '' : 's'}
+          </Badge>
+        </div>
+
+        <p className="md-body-medium mt-4 text-on-surface-variant">
+          This app is not on your device, so PatchIt cannot check whether your build is
+          supported. Install it, then rescan to get a verdict.
+        </p>
+
+        {info.supportedVersions.length > 0 && (
+          <>
+            <p className="md-title-small mt-5 text-on-surface">Supported versions</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {info.supportedVersions.slice(0, 12).map((version) => (
+                <Chip key={version}>{version}</Chip>
+              ))}
+              {info.supportedVersions.length > 12 && (
+                <Chip>+{info.supportedVersions.length - 12} more</Chip>
+              )}
+            </div>
+          </>
+        )}
+
+        <p className="md-title-small mt-5 text-on-surface">
+          Source{info.repos.length === 1 ? '' : 's'}
+        </p>
+        <div className="mt-2 space-y-2">
+          {info.repos.map((repo) => (
+            <Card key={repo} variant="outlined" className="flex items-center gap-3 p-3">
+              <Icon name="source" size={20} className="flex-none text-on-surface-variant" />
+              <span className="md-body-medium min-w-0 flex-1 truncate text-on-surface">{repo}</span>
+              <Button
+                variant="text"
+                icon="add"
+                onClick={() => {
+                  addRepoToMorphe(repo).then((result) => {
+                    if (!result.ok) show({ message: result.message });
+                  });
+                }}
+              >
+                Add
+              </Button>
+            </Card>
+          ))}
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <Button variant="text" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </BottomSheet>
   );
 }

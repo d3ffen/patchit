@@ -31,6 +31,9 @@ patch — then hands the covering patch sources to Morphe Manager.
   are `supported`, `experimental`, `untested`, `too new`, `too old` or
   `no patches`, computed per source.
 - **Covers community patches** — ~4,200 patches across ~970 packages.
+- **Browses apps you don't have** — switch the Apps tab to **All apps** to see
+  every package the sources cover, not only the ones installed. Tapping one shows
+  which versions it supports and lets you add that source to Morphe straight away.
 - **Works offline** — both indexes cached, plus a bundled snapshot.
 - **Sets Morphe up** — sends the covering repositories to Morphe Manager through
   its real `add-source` deep link.

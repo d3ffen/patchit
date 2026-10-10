@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { addRepoToMorphe } from '@/core/morphe';
 import { resolveInput } from '@/registry/sources';
 import { useStore } from '@/state/store';
@@ -14,6 +14,7 @@ import {
   Fab,
   IconButton,
   ListItem,
+  SearchBar,
   Switch,
   TextField,
   cx,
@@ -33,6 +34,8 @@ export function SourcesScreen() {
   const { sources, snapshot, snapshotOrigin, sync, syncing, addSource, removeSource, toggleSource } =
     useStore();
   const [addOpen, setAddOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
   const { show } = useSnackbar();
 
@@ -59,6 +62,61 @@ export function SourcesScreen() {
     return apps.size;
   }, [snapshot]);
 
+  /**
+   * Patch-name matches per source.
+   *
+   * Morphe searches patch names alongside source names, and it is the right call:
+   * "which source carries the Spotify patch?" is a question the source list alone
+   * cannot answer, and making somebody open eight sources to find out is worse
+   * than the cost of scanning patch names.
+   */
+  const patchMatchCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const needle = query.trim().toLowerCase();
+    if (!needle) return counts;
+
+    for (const bundle of snapshot?.bundles ?? []) {
+      let matches = 0;
+      for (const patch of bundle.patches) {
+        if (
+          patch.name.toLowerCase().includes(needle) ||
+          (patch.description ?? '').toLowerCase().includes(needle)
+        ) {
+          matches += 1;
+        }
+      }
+      if (matches > 0) {
+        counts.set(bundle.sourceId, (counts.get(bundle.sourceId) ?? 0) + matches);
+      }
+    }
+    return counts;
+  }, [snapshot, query]);
+
+  /** Sources whose own name, repo or URL matches — ranked above patch hits. */
+  const sourceNameMatches = useCallback(
+    (source: (typeof sources)[number]) => {
+      const needle = query.trim().toLowerCase();
+      if (!needle) return true;
+      return `${source.name} ${source.repo ?? ''} ${source.indexUrl}`.toLowerCase().includes(needle);
+    },
+    [query],
+  );
+
+  const visibleSources = useMemo(() => {
+    if (!query.trim()) return sources;
+
+    return sources
+      .filter((source) => sourceNameMatches(source) || (patchMatchCounts.get(source.id) ?? 0) > 0)
+      .sort((a, b) => {
+        // A source the query names is the one that was asked for; the rest rank
+        // by how much of the query they carry. Array.sort is stable, so ties
+        // keep the order they had before the query was typed.
+        const named = Number(sourceNameMatches(b)) - Number(sourceNameMatches(a));
+        if (named !== 0) return named;
+        return (patchMatchCounts.get(b.id) ?? 0) - (patchMatchCounts.get(a.id) ?? 0);
+      });
+  }, [sources, query, patchMatchCounts, sourceNameMatches]);
+
   const detailSource = sources.find((s) => s.id === detailId) ?? null;
   const detailBundles = useMemo(
     () => (snapshot?.bundles ?? []).filter((b) => b.sourceId === detailId),
@@ -76,12 +134,23 @@ export function SourcesScreen() {
               : `${totalBundles} bundles · ${totalApps} apps covered`
           }
           actions={
-            <IconButton
-              icon="sync"
-              label="Sync all sources"
-              disabled={syncing}
-              onClick={() => void sync({ force: true })}
-            />
+            <>
+              <IconButton
+                icon={searchOpen ? 'close' : 'search'}
+                label={searchOpen ? 'Close search' : 'Search sources'}
+                selected={searchOpen}
+                onClick={() => {
+                  setSearchOpen((open) => !open);
+                  if (searchOpen) setQuery('');
+                }}
+              />
+              <IconButton
+                icon="sync"
+                label="Sync all sources"
+                disabled={syncing}
+                onClick={() => void sync({ force: true })}
+              />
+            </>
           }
         />
       }
@@ -114,9 +183,43 @@ export function SourcesScreen() {
         </div>
       )}
 
-      <SectionHeader>Registry</SectionHeader>
+      {searchOpen && (
+        <div className="md-floating-search">
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="Search sources and patches"
+            className="shadow-e2"
+            trailing={
+              query ? (
+                <IconButton icon="close" label="Clear search" size={24} onClick={() => setQuery('')} />
+              ) : undefined
+            }
+          />
+        </div>
+      )}
+
+      <SectionHeader
+        trailing={
+          query.trim() ? (
+            <span className="md-label-medium text-on-surface-variant">
+              {visibleSources.length} of {sources.length}
+            </span>
+          ) : undefined
+        }
+      >
+        Registry
+      </SectionHeader>
+
+      {visibleSources.length === 0 ? (
+        <EmptyState
+          icon="search"
+          title="No matching sources"
+          body={`Nothing matches “${query.trim()}” by name or by patch.`}
+        />
+      ) : (
       <Card variant="outlined" className="mx-4 overflow-hidden p-0">
-        {sources.map((source, index) => {
+        {visibleSources.map((source, index) => {
           const counts = bundleCounts.get(source.id);
           const isBuiltIn = source.kind === 'official' || source.kind === 'community';
 
@@ -177,6 +280,7 @@ export function SourcesScreen() {
           );
         })}
       </Card>
+      )}
 
       {sources.length === 0 && (
         <EmptyState

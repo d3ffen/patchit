@@ -467,6 +467,71 @@ export function pickRecommended(
   return minVersion(supported);
 }
 
+/**
+ * What the registry knows about a package, with no installed build to compare
+ * against.
+ *
+ * This is the "not installed" half of the browser. There is nothing to judge —
+ * no version, no versionCode, no certificate — so no verdict is produced, and
+ * pretending otherwise would be the exact failure mode this app exists to
+ * avoid. What it can say is what is on offer: which sources carry patches for
+ * the package, how many, and which builds they name.
+ */
+export interface RegistryPackage {
+  packageName: string;
+  /** Best display name any source declares, else null. */
+  name: string | null;
+  patchCount: number;
+  bundleCount: number;
+  /** Repositories covering this package, for the source list. */
+  repos: string[];
+  /** Every version any source names for it, ascending and de-duplicated. */
+  supportedVersions: string[];
+  newestVersion: string | null;
+  /** Patches that apply to any app, offered alongside the per-app ones. */
+  universalPatchCount: number;
+}
+
+export function describePackage(
+  packageName: string,
+  index: RegistryIndex,
+): RegistryPackage {
+  const entries = index.byPackage.get(packageName) ?? [];
+
+  const versions = new Set<string>();
+  const repos = new Set<string>();
+  let name: string | null = null;
+
+  for (const { patch, bundle } of entries) {
+    repos.add(bundle.repo);
+    for (const compatibility of patch.compatibilities) {
+      if (compatibility.packageName !== packageName) continue;
+      // Sources do not agree on display names; the first non-empty one wins
+      // rather than the longest, so a verbose source cannot hijack the label.
+      if (!name && compatibility.name) name = compatibility.name;
+      for (const target of compatibility.targets) {
+        if (target.version) versions.add(target.version);
+      }
+    }
+  }
+
+  const supportedVersions = [...versions].sort(compareVersions);
+  const universal = index.universal.filter(({ patch }) =>
+    patch.compatibilities.length === 0,
+  );
+
+  return {
+    packageName,
+    name,
+    patchCount: new Set(entries.map((e) => e.patch.id)).size,
+    bundleCount: new Set(entries.map((e) => e.bundle.id)).size,
+    repos: [...repos].sort(),
+    supportedVersions,
+    newestVersion: supportedVersions.at(-1) ?? null,
+    universalPatchCount: universal.length,
+  };
+}
+
 export function evaluateAll(apps: InstalledApp[], index: RegistryIndex): AppMatch[] {
   return apps.map((app) => evaluateApp(app, index));
 }

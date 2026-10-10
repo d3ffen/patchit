@@ -17,7 +17,7 @@ actually patch, then hands the covering patch **sources** to Morphe Manager.
 decides *how*. Do not add code that patches or installs apps.
 
 - Public repo: `github.com/d3ffen/patchit`
-- Current release: **v1.0.3** (self-signed APK on GitHub Releases + in-app updater)
+- Current release: **v1.0.4** (self-signed APK on GitHub Releases + in-app updater)
 - Licence: GPL-3.0
 
 ---

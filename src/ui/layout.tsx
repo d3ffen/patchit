@@ -36,8 +36,19 @@ export function NavigationBar({
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-30 flex border-t border-outline-variant/40 bg-surface-container"
-      style={{ paddingBottom: 'var(--safe-bottom)' }}
+      /*
+       * A row of three floating pills.
+       *
+       * The wrapper only positions the row; each pill below carries its own
+       * surface, hairline and elevation. That is what makes them three targets
+       * instead of one divided control — and it is why nothing visual is set
+       * here.
+       *
+       * No `bottom-0`/`inset-x-0` on this element: Tailwind emits utilities after
+       * the components layer, so an edge-pinning utility quietly beats the
+       * geometry in .md-nav-bar and welds the row to the bottom of the screen.
+       */
+      className="md-nav-bar fixed z-30 flex"
     >
       {destinations.map((destination) => {
         const selected = destination.id === current;
@@ -45,31 +56,35 @@ export function NavigationBar({
           <button
             key={destination.id}
             type="button"
+            /*
+             * The visible label is gone, so the accessible name is carried here
+             * instead — otherwise this is three unlabelled buttons to a screen
+             * reader, which is worse than having labels at all.
+             */
+            aria-label={destination.label}
             aria-current={selected ? 'page' : undefined}
             onClick={() => onNavigate(destination.id)}
-            className="state-layer flex flex-1 flex-col items-center gap-1 py-3"
+            className={cx(
+              // `relative` is for the warning badge, which is absolutely placed.
+              'md-nav-pill state-layer relative flex flex-1 items-center justify-center',
+              'border shadow-e3 transition-colors duration-200 ease-emphasized',
+              /*
+               * The active pill is a step brighter than the other two rather than
+               * a different hue. secondary-container would tint it with whatever
+               * the wallpaper's accent happens to be, so the same app would show
+               * a teal pill on one phone and a pink one on the next.
+               */
+              selected
+                ? 'border-transparent bg-surface-container-high text-on-surface'
+                : 'border-outline-variant/40 bg-surface-container text-on-surface-variant',
+            )}
           >
-            <span
-              className={cx(
-                'relative grid h-8 w-16 place-items-center rounded-full transition-colors duration-200 ease-emphasized',
-                selected ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant',
-              )}
-            >
-              <Icon name={destination.icon} size={24} />
-              {destination.badge ? (
-                <span className="md-label-small absolute right-3 top-1 grid min-w-4 place-items-center rounded-full bg-error px-1 text-on-error">
-                  {destination.badge > 99 ? '99+' : destination.badge}
-                </span>
-              ) : null}
-            </span>
-            <span
-              className={cx(
-                'md-label-medium',
-                selected ? 'text-on-surface' : 'text-on-surface-variant',
-              )}
-            >
-              {destination.label}
-            </span>
+            <Icon name={destination.icon} size={24} />
+            {destination.badge ? (
+              <span className="md-label-small absolute right-3 top-1.5 grid min-w-4 place-items-center rounded-full bg-error px-1 text-on-error">
+                {destination.badge > 99 ? '99+' : destination.badge}
+              </span>
+            ) : null}
           </button>
         );
       })}

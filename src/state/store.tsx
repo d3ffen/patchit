@@ -10,9 +10,24 @@ import {
 } from 'react';
 import { AppScanner, MorpheBridge } from '@/native/plugins';
 import type { InstalledApp, MorpheInstall } from '@/native/types';
-import { buildIndex, evaluateAll, type AppMatch, type RegistryIndex } from '@/core/compatibility';
+import {
+  buildIndex,
+  describePackage,
+  evaluateAll,
+  type AppMatch,
+  type RegistryIndex,
+  type RegistryPackage,
+} from '@/core/compatibility';
 import { log } from '@/diagnostics/logger';
-import { kvGet, kvSet, persistStorage, readSnapshot, readIcon, writeIcons } from '@/registry/cache';import { httpGet } from '@/registry/http';
+import {
+  kvGet,
+  kvSet,
+  persistStorage,
+  readIcon,
+  readSnapshot,
+  writeIcons,
+} from '@/registry/cache';
+import { fetchPlayIcon } from '@/registry/playIcons';import { httpGet } from '@/registry/http';
 import { loadBundledSnapshot } from '@/registry/seed';
 import { checkForUpdate, type UpdateState } from '@/native/updater';
 import { defaultSources, makeCustomSource, resolveInput } from '@/registry/sources';
@@ -37,6 +52,18 @@ import type { PatchSource, RegistrySnapshot } from '@/registry/schema';
  * and a stuttering one.
  */
 
+/**
+ * A row in the app browser.
+ *
+ * Two shapes because the two kinds of row genuinely differ: an installed app has
+ * a build to compare and therefore a verdict, a registry-only package has
+ * neither. Keeping them in one union lets the list sort and filter them together
+ * without pretending the second kind knows more than it does.
+ */
+export type BrowseEntry =
+  | { kind: 'installed'; packageName: string; label: string; match: AppMatch }
+  | { kind: 'registry'; packageName: string; label: string; info: RegistryPackage };
+
 export interface Filters {
   /** Free-text query over package name and label. */
   query: string;
@@ -48,6 +75,12 @@ export interface Filters {
   includeSplits: boolean;
   /** How to sort the list. */
   sort: 'name' | 'verdict' | 'patches';
+  /**
+   * `installed` lists what is on the device. `all` adds every package the
+   * registry covers, whether or not it is installed — the difference between
+   * "what can I patch?" and "is this patchable at all?".
+   */
+  browseMode: 'installed' | 'all';
 }
 
 const DEFAULT_FILTERS: Filters = {
@@ -56,9 +89,26 @@ const DEFAULT_FILTERS: Filters = {
   includeSystem: false,
   includeSplits: true,
   sort: 'name',
+  browseMode: 'installed',
 };
 
 const FILTERS_KEY = 'apps.filters';
+
+/**
+ * Filters that are where you happen to be looking, not how you like the app.
+ *
+ * These used to be saved with the rest. Tapping "All apps" once therefore made
+ * the app open on the full ~966-row registry for ever after — including after
+ * the crash that view caused. A view state that survives a restart is a trap:
+ * the person has no obvious way back to the default they never chose to leave.
+ */
+const EPHEMERAL_FILTERS = ['query', 'browseMode'] as const;
+
+function withoutEphemeral(filters: Filters): Filters {
+  const kept = { ...filters };
+  for (const key of EPHEMERAL_FILTERS) delete kept[key];
+  return kept;
+}
 const SOURCES_KEY = 'registry.sources';
 
 /**
@@ -82,6 +132,8 @@ export interface StoreValue {
   apps: InstalledApp[];
   matches: AppMatch[];
   filteredMatches: AppMatch[];
+  /** Installed matches plus, in `all` mode, registry-only packages. */
+  browseEntries: BrowseEntry[];
   index: RegistryIndex | null;
   filters: Filters;
   setFilters: (next: Partial<Filters>) => void;
@@ -141,7 +193,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         const [storedSources, storedFilters, cached] = await Promise.all([
           kvGet<PatchSource[] | null>(SOURCES_KEY, null),
-          kvGet<Filters>(FILTERS_KEY, DEFAULT_FILTERS),
+          kvGet<Filters>(FILTERS_KEY, DEFAULT_FILTERS).then((stored) => ({
+            ...DEFAULT_FILTERS,
+            ...(stored ?? {}),
+            ...Object.fromEntries(EPHEMERAL_FILTERS.map((key) => [key, DEFAULT_FILTERS[key]])),
+          })),
           readSnapshot(),
         ]);
         if (cancelled) return;
@@ -203,6 +259,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return result;
   }, [apps, index]);
 
+
   const filteredMatches = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
     const filtered = matches.filter((match) => {
@@ -243,6 +300,54 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     });
   }, [matches, filters]);
+
+  /**
+   * Rows for the browser, in whichever mode is active.
+   *
+   * Installed apps carry a verdict; registry-only packages cannot, because there
+   * is no build to judge. Both are shaped the same way here so the screen has
+   * one list, one search box and one sort, rather than two of each.
+   */
+  const browseEntries = useMemo((): BrowseEntry[] => {
+    const query = filters.query.trim().toLowerCase();
+
+    const installed: BrowseEntry[] = filteredMatches.map((match) => ({
+      kind: 'installed',
+      packageName: match.app.packageName,
+      label: match.app.label,
+      match,
+    }));
+
+    if (filters.browseMode === 'installed' || !index) return installed;
+
+    const owned = new Set(apps.map((app) => app.packageName));
+    const registry: BrowseEntry[] = [];
+    for (const packageName of index.allPackages) {
+      if (owned.has(packageName)) continue;
+      const info = describePackage(packageName, index);
+      const label = info.name ?? packageName;
+      if (query && !`${label} ${packageName}`.toLowerCase().includes(query)) continue;
+      registry.push({ kind: 'registry', packageName, label, info });
+    }
+
+    // Installed apps stay on top in every sort. They are the ones you can act on
+    // now, and burying them under 900 rows you cannot would make the default
+    // view worse the more sources you enable.
+    switch (filters.sort) {
+      case 'patches':
+        registry.sort(
+          (a, b) =>
+            (b.kind === 'registry' ? b.info.patchCount : 0) -
+              (a.kind === 'registry' ? a.info.patchCount : 0) ||
+            a.label.localeCompare(b.label),
+        );
+        break;
+      default:
+        registry.sort((a, b) => a.label.localeCompare(b.label));
+    }
+
+    return [...installed, ...registry];
+  }, [filteredMatches, filters.browseMode, filters.sort, filters.query, index, apps]);
 
   /* --- Actions -------------------------------------------------------- */
 
@@ -412,14 +517,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       try {
         const { dataUrl } = await AppScanner.getIcon({ packageName, size });
-        if (!dataUrl) return null;
-        iconCache.current.set(key, dataUrl);
-        await writeIcons([{ key, dataUrl, cachedAt: Date.now() }]);
-        return dataUrl;
+        if (dataUrl) {
+          iconCache.current.set(key, dataUrl);
+          await writeIcons([{ key, dataUrl, cachedAt: Date.now() }]);
+          return dataUrl;
+        }
       } catch (iconError) {
-        log.debug('icons', `No icon for ${packageName}`, iconError);
-        return null;
+        // Expected for a package that is not installed — PackageManager has
+        // nothing to draw. Not an error, just the signal to try elsewhere.
+        log.debug('icons', `No system icon for ${packageName}`, iconError);
       }
+
+      // Not on the device, so ask the Play Store. Cached forever on success;
+      // null on any failure lets the caller draw a monogram instead.
+      const fromPlay = await fetchPlayIcon(packageName);
+      if (!fromPlay) return null;
+
+      iconCache.current.set(key, fromPlay);
+      await writeIcons([{ key, dataUrl: fromPlay, cachedAt: Date.now() }]);
+      return fromPlay;
     },
     [],
   );
@@ -442,7 +558,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setFilters = useCallback((next: Partial<Filters>) => {
     setFiltersState((current) => {
       const merged = { ...current, ...next };
-      void kvSet(FILTERS_KEY, merged);
+      // Only the durable half is written; the rest starts fresh next launch.
+      void kvSet(FILTERS_KEY, withoutEphemeral(merged));
       return merged;
     });
   }, []);
@@ -476,6 +593,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       apps,
       matches,
       filteredMatches,
+      browseEntries,
       index,
       filters,
       setFilters,
