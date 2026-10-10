@@ -13,8 +13,7 @@
 
 PatchIt scans the apps on your Android device and shows which of them the
 [Morphe](https://github.com/MorpheApp/morphe-patcher) patch ecosystem can actually
-patch — then hands the covering patch sources to Morphe Manager. It never patches
-anything itself.
+patch — then hands the covering patch sources to Morphe Manager. 
 
 <p align="center">
   <img src="docs/screenshot-apps.webp" alt="PatchIt listing patchable apps with a verdict and patch count for each" width="45%">
