@@ -21,7 +21,7 @@
     "@capacitor/android": "^7.0.0",
     "@capacitor/app": "^7.0.0",
     "@capacitor/core": "^7.0.0",
-    "@material/material-color-utilities": "^0.3.0",
+    "@material/material-color-utilities": "^0.4.0",
     "idb": "^8.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
