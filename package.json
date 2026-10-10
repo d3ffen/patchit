@@ -18,16 +18,16 @@
     "verify:theme": "esbuild scripts/verify-theme.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=.verify/verify-theme.mjs --log-level=warning && node .verify/verify-theme.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "^7.0.0",
-    "@capacitor/app": "^7.0.0",
-    "@capacitor/core": "^7.0.0",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2",
     "@material/material-color-utilities": "^0.3.0",
     "idb": "^8.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.0.0",
+    "@capacitor/cli": "^8.5.2",
     "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
