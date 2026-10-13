@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.png" alt="PatchIt — Morphe patch scanner for Android" width="100%">
+  <img src="docs/banner.jpg" alt="PatchIt — Morphe patch scanner for Android" width="100%">
 </p>
 
 <p align="center">
