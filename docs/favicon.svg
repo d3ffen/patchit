@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-label="PatchIt">
+  <rect width="108" height="108" rx="26" fill="#0B57D0" />
+  <g transform="rotate(-45 54 54)" fill="#ffffff" fill-rule="evenodd">
+    <path d="M41,39 L67,39 A15,15 0 0 1 67,69 L41,69 A15,15 0 0 1 41,39 Z M45,54 a9,9 0 1 0 18,0 a9,9 0 1 0 -18,0 Z" />
+  </g>
+</svg>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta id="theme-color" name="theme-color" content="#141218" />
+    <title>Page not found — PatchIt</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .lost {
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        padding: calc(24px + var(--sat)) max(24px, var(--sar)) calc(24px + var(--sab))
+          max(24px, var(--sal));
+      }
+      .lost__mark {
+        width: 84px;
+        height: 84px;
+        margin: 0 auto 24px;
+        border-radius: 24px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(140deg, var(--primary), var(--accent));
+        color: var(--on-primary);
+        box-shadow: var(--shadow-2);
+      }
+      .lost__mark svg {
+        width: 48px;
+        height: 48px;
+      }
+      .lost h1 {
+        font-size: clamp(2rem, 6vw, 3rem);
+        font-weight: 500;
+        letter-spacing: -1px;
+        margin-bottom: 12px;
+      }
+      .lost p {
+        color: var(--on-surface-variant);
+        max-width: 420px;
+        margin: 0 auto 28px;
+      }
+      .lost .hero__cta {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <svg aria-hidden="true" focusable="false" style="position: absolute; width: 0; height: 0; overflow: hidden">
+      <symbol id="i-patch" viewBox="0 0 108 108">
+        <g transform="rotate(-45 54 54)" fill="currentColor" fill-rule="evenodd">
+          <path d="M41,39 L67,39 A15,15 0 0 1 67,69 L41,69 A15,15 0 0 1 41,39 Z M45,54 a9,9 0 1 0 18,0 a9,9 0 1 0 -18,0 Z" />
+        </g>
+      </symbol>
+      <symbol id="i-arrow-right" viewBox="0 0 24 24">
+        <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </g>
+      </symbol>
+    </svg>
+
+    <main class="lost">
+      <div>
+        <span class="lost__mark"><svg><use href="#i-patch"></use></svg></span>
+        <h1>404 — patch not found</h1>
+        <p>This page isn't part of the build. Head back to the PatchIt landing page.</p>
+        <div class="hero__cta">
+          <a class="btn btn--filled" href="./"><svg><use href="#i-arrow-right"></use></svg>Back to home</a>
+          <a
+            class="btn btn--outlined"
+            href="https://github.com/d3ffen/patchit"
+            target="_blank"
+            rel="noopener"
+            >GitHub repository</a
+          >
+        </div>
+      </div>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
