@@ -30,7 +30,7 @@ patch — then hands the covering patch sources to Morphe Manager.
 - **Checks compatibility** — by `versionCode` first, version name second. Verdicts
   are `supported`, `experimental`, `untested`, `too new`, `too old` or
   `no patches`, computed per source.
-- **Covers community patches** — ~4,200 patches across ~970 packages.
+- **Covers community patches** — ~7,100 patches across ~1,300 packages.
 - **Browses apps you don't have** — switch the Apps tab to **All apps** to see
   every package the sources cover, not only the ones installed. Tapping one shows
   which versions it supports and lets you add that source to Morphe straight away.

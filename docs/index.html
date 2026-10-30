@@ -228,6 +228,19 @@
           </g>
         </symbol>
 
+        <symbol id="i-eye-off" viewBox="0 0 24 24">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+            <line x1="1" y1="1" x2="23" y2="23" />
+          </g>
+        </symbol>
+
+        <symbol id="i-filter" viewBox="0 0 24 24">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+          </g>
+        </symbol>
+
         <symbol id="i-bug" viewBox="0 0 24 24">
           <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="8" y="6" width="8" height="14" rx="4" />
@@ -344,7 +357,7 @@
                 href="https://github.com/d3ffen/patchit/releases/latest"
               >
                 <svg><use href="#i-download"></use></svg>
-                Download PatchIt 1.0.4
+                Download PatchIt 1.0.5
               </a>
               <a
                 class="btn btn--outlined"
@@ -358,7 +371,7 @@
             </div>
 
             <p class="hero__meta">
-              <span>3.6 MB APK</span>
+              <span>3.9 MB APK</span>
               <span class="dot" aria-hidden="true"></span>
               <span>Android 6.0+</span>
               <span class="dot" aria-hidden="true"></span>
@@ -367,11 +380,11 @@
 
             <div class="stats">
               <div class="stat">
-                <div class="stat__num">4,200+</div>
+                <div class="stat__num">7,100+</div>
                 <div class="stat__label">patches indexed</div>
               </div>
               <div class="stat">
-                <div class="stat__num">970+</div>
+                <div class="stat__num">1,300+</div>
                 <div class="stat__label">packages covered</div>
               </div>
               <div class="stat">
@@ -431,8 +444,8 @@
                 <svg><use href="#i-layers"></use></svg>
               </span>
               <span>
-                <span class="float-card__title">4,200 patches</span><br />
-                <span class="float-card__sub">across 970 apps</span>
+                <span class="float-card__title">7,100 patches</span><br />
+                <span class="float-card__sub">across 1,300 apps</span>
               </span>
             </div>
           </div>
@@ -517,7 +530,7 @@
               <div class="card__icon"><svg><use href="#i-layers"></use></svg></div>
               <h3>Covers community patches</h3>
               <p>
-                Around 4,200 patches across roughly 970 packages from the Morphe patch ecosystem.
+                Around 7,100 patches across roughly 1,300 packages from the Morphe patch ecosystem.
               </p>
             </article>
 
@@ -527,6 +540,33 @@
               <p>
                 Switch to <strong>All apps</strong> to see every package the sources cover, even
                 ones that aren't installed. Tap one to see its supported versions.
+              </p>
+            </article>
+
+            <article class="card card--accent reveal">
+              <div class="card__icon"><svg><use href="#i-filter"></use></svg></div>
+              <h3>Filters like the community site</h3>
+              <p>
+                Narrow the list by Play Store category, verdict, patched state or hidden state — on
+                both Installed and All apps.
+              </p>
+            </article>
+
+            <article class="card card--accent reveal">
+              <div class="card__icon"><svg><use href="#i-eye-off"></use></svg></div>
+              <h3>Hide what you don't patch</h3>
+              <p>
+                Swipe a row left to hide it, undo from the snackbar, and reveal hidden apps again
+                whenever you need them.
+              </p>
+            </article>
+
+            <article class="card card--accent reveal">
+              <div class="card__icon"><svg><use href="#i-check-circle"></use></svg></div>
+              <h3>Remember patched builds</h3>
+              <p>
+                Swipe right to mark an app as patched. PatchIt stores the build, so a later update
+                shows as <strong>Patched · older build</strong> instead of pretending it is current.
               </p>
             </article>
 
@@ -647,7 +687,7 @@
               </div>
               <figcaption>
                 <h3>Apps</h3>
-                <p>Installed apps with a verdict, patch count and signature state at a glance.</p>
+                <p>Installed apps with a verdict, patch count and signature state at a glance — plus hidden and patched states.</p>
               </figcaption>
             </figure>
 
@@ -850,8 +890,8 @@ cd android &amp;&amp; ./gradlew assembleDebug</code></pre>
     <!-- ===================== Mobile sticky download bar ===================== -->
     <div class="mobile-cta" id="mobile-cta">
       <div class="mobile-cta__text">
-        <strong>PatchIt 1.0.4</strong>
-        <span>3.6 MB APK · Android 6+</span>
+        <strong>PatchIt 1.0.5</strong>
+        <span>3.9 MB APK · Android 6+</span>
       </div>
       <a class="btn btn--filled" href="https://github.com/d3ffen/patchit/releases/latest">
         <svg><use href="#i-download"></use></svg>
