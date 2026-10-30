@@ -105,21 +105,32 @@ function Shell() {
 
   return (
     <div className="h-full">
-      {destination === 'apps' && <AppsScreen />}
-      {destination === 'sources' && <SourcesScreen />}
-      {destination === 'settings' && <SettingsScreen />}
+      {/* Morphe Manager's soft colour fields, behind every screen. */}
+      <div className="app-ambient" aria-hidden="true">
+        <span className="app-orb app-orb-a" />
+        <span className="app-orb app-orb-b" />
+      </div>
 
-      <NavigationBar
-        destinations={destinations}
-        current={destination}
-        onNavigate={setDestination}
-      />
-
-      {logsOpen && (
-        <div className="fixed inset-0 z-40 bg-background">
-          <LogsScreen onClose={() => setLogsOpen(false)} />
+      <div className="relative z-10 h-full">
+        {/* A cross-fade/slide between destinations, the way Morphe swaps tabs. */}
+        <div key={destination} className="animate-screen-in h-full">
+          {destination === 'apps' && <AppsScreen />}
+          {destination === 'sources' && <SourcesScreen />}
+          {destination === 'settings' && <SettingsScreen />}
         </div>
-      )}
+
+        <NavigationBar
+          destinations={destinations}
+          current={destination}
+          onNavigate={setDestination}
+        />
+
+        {logsOpen && (
+          <div className="fixed inset-0 z-40 bg-background">
+            <LogsScreen onClose={() => setLogsOpen(false)} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

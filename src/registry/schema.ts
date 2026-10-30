@@ -227,6 +227,45 @@ export interface BundleEntry {
   experimentalByPackage: Record<string, boolean>;
 }
 
+/**
+ * Store metadata published alongside the community index.
+ *
+ * It is the only place in the ecosystem that says what an app *is* rather than
+ * what patches it has: a Play Store name, category and icon. PatchIt used to
+ * drop it at normalisation time, which is why the browser could not offer the
+ * category filter the community site has. Unknown packages (the official set,
+ * or anything the crawl has not seen) simply have no entry.
+ */
+export interface StoreApp {
+  name: string | null;
+  category: string | null;
+  iconUrl: string | null;
+  description: string | null;
+}
+
+/**
+ * The store categories the community index uses, in the order the site lists
+ * them. Kept here rather than in a screen because the filter and the row badge
+ * both need to agree on the label, and an unknown category from a future crawl
+ * still needs to render.
+ */
+export const STORE_CATEGORIES = [
+  'Education',
+  'Games',
+  'Lifestyle, Fitness & Sports',
+  'Maps & Navigation',
+  'Music & Audio',
+  'News, Media & Books',
+  'Personalization',
+  'Photography & Design',
+  'Productivity',
+  'Shopping',
+  'Social & Communication',
+  'Tools & Utilities',
+  'Video',
+  'Weather',
+] as const;
+
 export interface RegistrySnapshot {
   officialVersion: string | null;
   communityGeneratedAt: number | null;
@@ -235,4 +274,9 @@ export interface RegistrySnapshot {
   fetchedAt: number;
   /** Per-source parse diagnostics, surfaced in the log viewer. */
   warnings: string[];
+  /**
+   * packageName -> store metadata. Absent in snapshots written before the
+   * field existed, so every reader treats it as optional.
+   */
+  store: Record<string, StoreApp>;
 }

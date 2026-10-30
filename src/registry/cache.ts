@@ -101,7 +101,10 @@ const SNAPSHOT_ID = 'snapshot';
 
 export async function readSnapshot(): Promise<RegistrySnapshot | null> {
   const row = await (await getDB()).get('registry', SNAPSHOT_ID);
-  return row?.snapshot ?? null;
+  if (!row?.snapshot) return null;
+  // Snapshots cached before the store map existed are still valid registries;
+  // they simply have no categories until the next sync.
+  return { ...row.snapshot, store: row.snapshot.store ?? {} };
 }
 
 export async function writeSnapshot(snapshot: RegistrySnapshot): Promise<void> {

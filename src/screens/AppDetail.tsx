@@ -40,7 +40,7 @@ export function AppDetail({
   onShowLog: () => void;
 }) {
   const { show } = useSnackbar();
-  const { morpheInstalls } = useStore();
+  const { morpheInstalls, hidden, patched, toggleHidden, setPatched } = useStore();
   const [rawOpen, setRawOpen] = useState(false);
 
   const versions = useMemo(() => (match ? sortVersions(match.supportedVersions) : []), [match]);
@@ -51,6 +51,10 @@ export function AppDetail({
 
   const presentation = VERDICT_PRESENTATION[match.verdict];
   const { app } = match;
+  const mark = patched[app.packageName];
+  const marked = Boolean(mark);
+  const stale = Boolean(mark && mark.versionCode && app.versionCode && mark.versionCode !== app.versionCode);
+  const isHidden = hidden.has(app.packageName);
 
   const copy = async (text: string, label: string) => {
     try {
@@ -137,6 +141,65 @@ export function AppDetail({
             <Icon name="source" size={14} />
             {match.bundles.length} source{match.bundles.length === 1 ? '' : 's'}
           </Badge>
+          {marked && (
+            <Badge tone="ok">
+              <Icon name="check-circle" size={14} />
+              {stale ? 'Patched · older build' : 'Patched'}
+            </Badge>
+          )}
+          {isHidden && (
+            <Badge tone="neutral">
+              <Icon name="visibility-off" size={14} />
+              Hidden
+            </Badge>
+          )}
+        </div>
+
+        {marked && stale && (
+          <p className="md-body-small mt-2 text-on-surface-variant">
+            You marked {mark.versionName || `code ${mark.versionCode}`} as patched, but{' '}
+            {app.versionName || `code ${app.versionCode}`} is installed now. Mark it again once the
+            new build is patched.
+          </p>
+        )}
+
+        {/*
+          The two states PatchIt cannot read from the device. Morphe knows what it
+          has produced; this scanner does not, so the user tells it — and the
+          swipe on the list row is the shortcut to the same two actions.
+        */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            variant={marked ? 'tonal' : 'outlined'}
+            icon={marked ? 'undo' : 'check-circle'}
+            onClick={() => {
+              setPatched(app.packageName, !marked, {
+                versionName: app.versionName,
+                versionCode: app.versionCode,
+              });
+              show({
+                message: marked
+                  ? 'Patch mark removed.'
+                  : `Marked ${app.label} as patched.`,
+              });
+            }}
+          >
+            {marked ? 'Not patched' : 'Mark as patched'}
+          </Button>
+          <Button
+            variant="outlined"
+            icon={isHidden ? 'visibility' : 'visibility-off'}
+            onClick={() => {
+              toggleHidden(app.packageName);
+              show({
+                message: isHidden
+                  ? `${app.label} is back in the list.`
+                  : `${app.label} hidden. Find it under Hidden.`,
+              });
+            }}
+          >
+            {isHidden ? 'Unhide app' : 'Hide app'}
+          </Button>
         </div>
       </div>
 

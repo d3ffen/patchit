@@ -64,6 +64,14 @@ export type BrowseEntry =
   | { kind: 'installed'; packageName: string; label: string; match: AppMatch }
   | { kind: 'registry'; packageName: string; label: string; info: RegistryPackage };
 
+/** What the user told us about a build they already patched themselves. */
+export interface PatchedMark {
+  versionName: string;
+  versionCode: number;
+  /** When the mark was made, so the UI can say "marked 3 days ago" if needed. */
+  at: number;
+}
+
 export interface Filters {
   /** Free-text query over package name and label. */
   query: string;
@@ -75,6 +83,18 @@ export interface Filters {
   includeSplits: boolean;
   /** How to sort the list. */
   sort: 'name' | 'verdict' | 'patches';
+  /**
+   * Verdict filter. `mismatch` covers both "too new" and "too old", because
+   * from the user's point of view they are one problem: the build is not the
+   * one the patches were written for.
+   */
+  status: 'all' | 'supported' | 'experimental' | 'unlisted' | 'mismatch' | 'none';
+  /** Play Store category label, `all`, or `uncategorized`. */
+  category: string;
+  /** Whether an app carries a user-made "already patched" mark. */
+  patched: 'all' | 'patched' | 'unpatched';
+  /** Reveal apps the user hid instead of filtering them out silently. */
+  showHidden: boolean;
   /**
    * `installed` lists what is on the device. `all` adds every package the
    * registry covers, whether or not it is installed — the difference between
@@ -89,10 +109,16 @@ const DEFAULT_FILTERS: Filters = {
   includeSystem: false,
   includeSplits: true,
   sort: 'name',
+  status: 'all',
+  category: 'all',
+  patched: 'all',
+  showHidden: false,
   browseMode: 'installed',
 };
 
 const FILTERS_KEY = 'apps.filters';
+const HIDDEN_KEY = 'apps.hidden';
+const PATCHED_KEY = 'apps.patched';
 
 /**
  * Filters that are where you happen to be looking, not how you like the app.
@@ -137,6 +163,20 @@ export interface StoreValue {
   index: RegistryIndex | null;
   filters: Filters;
   setFilters: (next: Partial<Filters>) => void;
+  /** Package names the user has hidden from the app list. */
+  hidden: Set<string>;
+  /** packageName -> the build that was marked as already patched. */
+  patched: Record<string, PatchedMark>;
+  hiddenCount: number;
+  patchedCount: number;
+  toggleHidden: (packageName: string) => void;
+  setPatched: (
+    packageName: string,
+    marked: boolean,
+    version?: { versionName: string; versionCode: number },
+  ) => void;
+  unhideAll: () => void;
+  clearPatched: () => void;
   morpheInstalls: MorpheInstall[];
   scanMeta: { durationMs: number; fullVisibility: boolean; skipped: number; deviceSdk: number } | null;
   lastScanAt: number | null;
@@ -170,6 +210,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sources, setSources] = useState<PatchSource[]>([]);
   const [apps, setApps] = useState<InstalledApp[]>([]);
   const [filters, setFiltersState] = useState<Filters>(DEFAULT_FILTERS);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [patched, setPatchedState] = useState<Record<string, PatchedMark>>({});
   const [morpheInstalls, setMorpheInstalls] = useState<MorpheInstall[]>([]);
   const [scanMeta, setScanMeta] = useState<StoreValue['scanMeta']>(null);
   const [lastScanAt, setLastScanAt] = useState<number | null>(null);
@@ -191,13 +233,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       try {
         void persistStorage();
 
-        const [storedSources, storedFilters, cached] = await Promise.all([
+        const [storedSources, storedFilters, storedHidden, storedPatched, cached] =
+          await Promise.all([
           kvGet<PatchSource[] | null>(SOURCES_KEY, null),
           kvGet<Filters>(FILTERS_KEY, DEFAULT_FILTERS).then((stored) => ({
             ...DEFAULT_FILTERS,
             ...(stored ?? {}),
             ...Object.fromEntries(EPHEMERAL_FILTERS.map((key) => [key, DEFAULT_FILTERS[key]])),
           })),
+          kvGet<string[]>(HIDDEN_KEY, []),
+          kvGet<Record<string, PatchedMark>>(PATCHED_KEY, {}),
           readSnapshot(),
         ]);
         if (cancelled) return;
@@ -205,14 +250,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const nextSources = storedSources && storedSources.length > 0 ? storedSources : defaultSources();
         setSources(nextSources);
         setFiltersState({ ...DEFAULT_FILTERS, ...storedFilters });
+        setHidden(new Set(Array.isArray(storedHidden) ? storedHidden : []));
+        setPatchedState(
+          storedPatched && typeof storedPatched === 'object' ? storedPatched : {},
+        );
 
         if (cached) {
-          setSnapshot(cached);
+          /*
+           * A snapshot cached by a build that predates the store map has no
+           * categories. The bundled seed does, so borrow its store map rather
+           * than making the first launch after an upgrade wait for a sync —
+           * and rather than leaving the category filter empty when the sync
+           * revalidates with a 304.
+           */
+          let hydrated = cached;
+          if (!cached.store || Object.keys(cached.store).length === 0) {
+            const seeded = await loadBundledSnapshot();
+            if (cancelled) return;
+            const storeCount = Object.keys(seeded?.store ?? {}).length;
+            if (seeded?.store && storeCount > 0) {
+              hydrated = { ...cached, store: seeded.store };
+              log.info(
+                'store',
+                `Backfilled store metadata for ${storeCount} apps from the bundled seed`,
+              );
+            }
+          }
+
+          setSnapshot(hydrated);
           setSnapshotOrigin('live');
           setLastSyncAt(cached.fetchedAt);
           log.info('store', 'Loaded the cached registry', {
             bundles: cached.bundles.length,
             ageMinutes: Math.round((Date.now() - cached.fetchedAt) / 60_000),
+            store: Object.keys(hydrated.store ?? {}).length,
           });
         } else {
           // First launch, nothing cached. Seed from the bundled capture so the
@@ -260,10 +331,62 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [apps, index]);
 
 
+  /**
+   * One predicate shared by installed and registry rows.
+   *
+   * The two kinds are filtered by the same controls on purpose: a category or a
+   * "patched" state means the same thing whether or not the package happens to
+   * be installed, and two subtly different predicates is how "All apps" starts
+   * disagreeing with "Installed".
+   */
+  const categoryOf = useCallback(
+    (packageName: string): string =>
+      index?.snapshot.store?.[packageName]?.category ?? 'Other',
+    [index],
+  );
+
+  const matchesStatus = useCallback(
+    (verdict: AppMatch['verdict']): boolean => {
+      switch (filters.status) {
+        case 'all':
+          return true;
+        case 'mismatch':
+          return verdict === 'too-new' || verdict === 'too-old';
+        case 'none':
+          return verdict === 'no-patches';
+        default:
+          return verdict === filters.status;
+      }
+    },
+    [filters.status],
+  );
+
+  const passesPatchedFilter = useCallback(
+    (packageName: string): boolean => {
+      if (filters.patched === 'all') return true;
+      const marked = Boolean(patched[packageName]);
+      return filters.patched === 'patched' ? marked : !marked;
+    },
+    [filters.patched, patched],
+  );
+
+  const passesCategoryFilter = useCallback(
+    (packageName: string): boolean =>
+      filters.category === 'all' || categoryOf(packageName) === filters.category,
+    [filters.category, categoryOf],
+  );
+
   const filteredMatches = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
     const filtered = matches.filter((match) => {
+      const { packageName } = match.app;
+      // Hidden apps are removed by default. Hiding one is a request not to see
+      // it, not a request to delete what the scanner knows about it.
+      if (!filters.showHidden && hidden.has(packageName)) return false;
+      if (!passesPatchedFilter(packageName)) return false;
+      if (!passesCategoryFilter(packageName)) return false;
       if (filters.patchableOnly && match.verdict === 'no-patches') return false;
+      if (!matchesStatus(match.verdict)) return false;
       if (!filters.includeSystem && match.app.isSystem && !match.app.isUpdatedSystemApp) return false;
       if (!filters.includeSplits && match.app.hasSplits) return false;
       if (query) {
@@ -299,7 +422,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return a.app.label.localeCompare(b.app.label);
       }
     });
-  }, [matches, filters]);
+  }, [
+    matches,
+    filters.query,
+    filters.showHidden,
+    filters.patchableOnly,
+    filters.includeSystem,
+    filters.includeSplits,
+    filters.sort,
+    hidden,
+    passesPatchedFilter,
+    passesCategoryFilter,
+    matchesStatus,
+  ]);
 
   /**
    * Rows for the browser, in whichever mode is active.
@@ -324,6 +459,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const registry: BrowseEntry[] = [];
     for (const packageName of index.allPackages) {
       if (owned.has(packageName)) continue;
+      /*
+       * A status filter is a statement about an installed build. A package that
+       * is not on the device has no build to judge, so it cannot honestly match
+       * "Supported" — showing it anyway would make the filter look broken.
+       */
+      if (filters.status !== 'all') continue;
+      if (!filters.showHidden && hidden.has(packageName)) continue;
+      if (!passesPatchedFilter(packageName)) continue;
+      if (!passesCategoryFilter(packageName)) continue;
+
       const info = describePackage(packageName, index);
       const label = info.name ?? packageName;
       if (query && !`${label} ${packageName}`.toLowerCase().includes(query)) continue;
@@ -347,7 +492,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
 
     return [...installed, ...registry];
-  }, [filteredMatches, filters.browseMode, filters.sort, filters.query, index, apps]);
+  }, [
+    filteredMatches,
+    filters.browseMode,
+    filters.sort,
+    filters.query,
+    filters.status,
+    filters.showHidden,
+    index,
+    apps,
+    hidden,
+    passesPatchedFilter,
+    passesCategoryFilter,
+  ]);
 
   /* --- Actions -------------------------------------------------------- */
 
@@ -555,6 +712,58 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const unhideAll = useCallback(() => {
+    setHidden(new Set());
+    void kvSet(HIDDEN_KEY, []);
+    log.info('ui', 'Unhid every app');
+  }, []);
+
+  const toggleHidden = useCallback((packageName: string) => {
+    setHidden((current) => {
+      const next = new Set(current);
+      const nowHidden = !next.has(packageName);
+      if (nowHidden) next.add(packageName);
+      else next.delete(packageName);
+      void kvSet(HIDDEN_KEY, [...next]);
+      log.info('ui', `${nowHidden ? 'Hid' : 'Unhid'} ${packageName}`);
+      return next;
+    });
+  }, []);
+
+  const setPatched = useCallback(
+    (
+      packageName: string,
+      marked: boolean,
+      version?: { versionName: string; versionCode: number },
+    ) => {
+      setPatchedState((current) => {
+        const next = { ...current };
+        if (marked) {
+          next[packageName] = {
+            versionName: version?.versionName ?? '',
+            versionCode: version?.versionCode ?? 0,
+            at: Date.now(),
+          };
+        } else {
+          delete next[packageName];
+        }
+        void kvSet(PATCHED_KEY, next);
+        log.info('ui', `${marked ? 'Marked patched' : 'Unmarked patched'}: ${packageName}`);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const clearPatched = useCallback(() => {
+    setPatchedState({});
+    void kvSet(PATCHED_KEY, {});
+    log.info('ui', 'Cleared every patched mark');
+  }, []);
+
+  const hiddenCount = hidden.size;
+  const patchedCount = useMemo(() => Object.keys(patched).length, [patched]);
+
   const setFilters = useCallback((next: Partial<Filters>) => {
     setFiltersState((current) => {
       const merged = { ...current, ...next };
@@ -597,6 +806,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       index,
       filters,
       setFilters,
+      hidden,
+      patched,
+      hiddenCount,
+      patchedCount,
+      toggleHidden,
+      setPatched,
+      unhideAll,
+      clearPatched,
       morpheInstalls,
       scanMeta,
       lastScanAt,
@@ -627,6 +844,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       index,
       filters,
       setFilters,
+      hidden,
+      patched,
+      hiddenCount,
+      patchedCount,
+      toggleHidden,
+      setPatched,
+      unhideAll,
+      clearPatched,
       morpheInstalls,
       scanMeta,
       lastScanAt,

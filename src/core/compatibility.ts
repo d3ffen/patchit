@@ -490,6 +490,12 @@ export interface RegistryPackage {
   newestVersion: string | null;
   /** Patches that apply to any app, offered alongside the per-app ones. */
   universalPatchCount: number;
+  /**
+   * Play Store category from the community store map, when the package is
+   * known there. The app's only source of "what kind of app is this", and the
+   * basis of the All apps category filter.
+   */
+  category: string | null;
 }
 
 export function describePackage(
@@ -519,6 +525,10 @@ export function describePackage(
   const universal = index.universal.filter(({ patch }) =>
     patch.compatibilities.length === 0,
   );
+  const stored = index.snapshot.store?.[packageName];
+  // The store labels packages the patch sources only name by package id, so it
+  // is a better fallback than showing "com.foo.bar" as the title.
+  if (!name && stored?.name) name = stored.name;
 
   return {
     packageName,
@@ -529,6 +539,7 @@ export function describePackage(
     supportedVersions,
     newestVersion: supportedVersions.at(-1) ?? null,
     universalPatchCount: universal.length,
+    category: stored?.category ?? null,
   };
 }
 

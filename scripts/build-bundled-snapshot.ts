@@ -30,7 +30,12 @@ import { dirname, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { convert } from '@/registry/sync';
 import { defaultSources } from '@/registry/sources';
-import type { BundleEntry, PatchEntry, RegistrySnapshot } from '@/registry/schema';
+import type {
+  BundleEntry,
+  PatchEntry,
+  RegistrySnapshot,
+  StoreApp,
+} from '@/registry/schema';
 
 /**
  * `.seed`, not `.json.gz`, and that is load-bearing.
@@ -96,6 +101,7 @@ async function main(): Promise<void> {
   const sources = defaultSources();
   const warnings: string[] = [];
   const bundles: BundleEntry[] = [];
+  const store: Record<string, StoreApp> = {};
 
   for (const source of sources.filter((s) => s.kind === 'official' || s.kind === 'community')) {
     const { body, bytes } = await fetchJson(source.indexUrl);
@@ -106,6 +112,19 @@ async function main(): Promise<void> {
         `${converted.bundles.reduce((n, b) => n + b.patches.length, 0)} patches`,
     );
     bundles.push(...converted.bundles.map(trimBundle));
+    /*
+     * Only the two fields the app filters and labels by. The icon and the full
+     * Play Store description are ~1.5x the rest of this map and the seed is
+     * already the largest asset in the APK; the live sync fills them in.
+     */
+    for (const [packageName, entry] of Object.entries(converted.store ?? {})) {
+      store[packageName] = {
+        name: entry.name,
+        category: entry.category,
+        iconUrl: null,
+        description: null,
+      };
+    }
   }
 
   const snapshot: RegistrySnapshot = {
@@ -117,6 +136,7 @@ async function main(): Promise<void> {
     sources: [],
     fetchedAt: Date.now(),
     warnings: [],
+    store,
   };
 
   mkdirSync(dirname(OUT), { recursive: true });

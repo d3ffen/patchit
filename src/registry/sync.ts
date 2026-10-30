@@ -5,15 +5,18 @@ import type {
   PatchEntry,
   PatchSource,
   RegistrySnapshot,
+  StoreApp,
 } from './schema';
 import {
   normalizeCompatibilityPool,
   parseCommunityIndex,
+  parseCommunityStore,
   parseOfficialCompatibility,
   parseOfficialList,
   parseRepoBundleManifest,
   type CompatibilityGroups,
 } from './normalize';
+import { log } from '@/diagnostics/logger';
 import { getEtag, getLastModified, httpGet, mapWithConcurrency } from './http';
 import { readHttpCache, writeHttpCache, writeSnapshot } from './cache';
 import { OFFICIAL_REPO } from './sources';
@@ -78,8 +81,21 @@ export async function syncRegistry(options: SyncOptions): Promise<SyncReport> {
   let completed = 0;
   const warnings: string[] = [];
 
+  /*
+   * If the previous snapshot has no store map at all, always ask the community
+   * source for a full body instead of a conditional one. A 304 would keep the
+   * old, category-less snapshot forever, which is exactly what happened to
+   * devices upgrading from a build before the map existed.
+   *
+   * Declared before the fetch starts: the callback below reads it immediately,
+   * and a `const` declared after this point is in its temporal dead zone.
+   */
+  const needsFreshStore = !previous?.store || Object.keys(previous.store).length === 0;
+
   const results = await mapWithConcurrency(active, 4, async (source) => {
-    const result = await syncOne(source, previous, warnings);
+    const result = await syncOne(source, previous, warnings, {
+      bypassCache: needsFreshStore && source.kind === 'community',
+    });
     completed += 1;
     onProgress?.({
       phase: 'fetching',
@@ -114,10 +130,21 @@ export async function syncRegistry(options: SyncOptions): Promise<SyncReport> {
     sources: results.map((r) => r.source),
     fetchedAt: Date.now(),
     warnings,
+    /*
+     * Store metadata is merged rather than replaced, for the same reason the
+     * bundles are: a source that failed or answered 304 contributes nothing
+     * this round and must not erase what the previous snapshot knew.
+     */
+    store: Object.assign(
+      {},
+      previous?.store ?? {},
+      ...results.map((r) => r.store ?? {}),
+    ),
   };
 
   const offline = results.length > 0 && results.every((r) => !r.ok && !r.notModified);
 
+  log.info('registry', `Store metadata covers ${Object.keys(snapshot.store).length} apps`);
   onProgress?.({ phase: 'done', completed: active.length, total: active.length });
   await writeSnapshot(snapshot);
 
@@ -151,15 +178,17 @@ interface OneResult {
   patchCount: number;
   error: string | null;
   version: string | null;
+  store: Record<string, StoreApp>;
 }
 
 async function syncOne(
   source: PatchSource,
   previous: RegistrySnapshot | null,
   warnings: string[],
+  options: { bypassCache?: boolean } = {},
 ): Promise<OneResult> {
   const started = performance.now();
-  const cached = await readHttpCache(source.indexUrl);
+  const cached = options.bypassCache ? null : await readHttpCache(source.indexUrl);
 
   const base: OneResult = {
     source,
@@ -172,6 +201,7 @@ async function syncOne(
     patchCount: 0,
     error: null,
     version: null,
+    store: {},
   };
 
   const previousBundles = previous?.bundles.filter((b) => b.sourceId === source.id) ?? [];
@@ -262,6 +292,7 @@ async function syncOne(
       patchCount: parsed.bundles.reduce((n, b) => n + b.patches.length, 0),
       error: null,
       version: parsed.version,
+      store: parsed.store ?? {},
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -283,6 +314,12 @@ async function syncOne(
 interface Converted {
   bundles: BundleEntry[];
   version: string | null;
+  /**
+   * Store metadata, when this source publishes it. Only the community index
+   * does; the official list is a patch list and knows nothing about the apps
+   * beyond the packages it names.
+   */
+  store?: Record<string, StoreApp>;
 }
 
 /**
@@ -367,6 +404,7 @@ function convertCommunity(
 
   const { value, warnings: parseWarnings } = parseCommunityIndex(raw, (key) => pool.value[key] ?? []);
   warnings.push(...parseWarnings.map((w) => `${source.name}: ${w}`));
+  const store = parseCommunityStore(value.store);
 
   // The pool is index-addressed, so keep it as groups AND build a
   // packageName -> group lookup for bundles that omit compatiblePackagesKey.
@@ -374,7 +412,7 @@ function convertCommunity(
     communityBundleToEntry(source, b, pool.value, index),
   );
 
-  return { bundles, version: null };
+  return { bundles, version: null, store };
 }
 
 function communityBundleToEntry(

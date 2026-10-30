@@ -36,8 +36,20 @@ import {
  */
 export function SettingsScreen() {
   const theme = useTheme();
-  const { snapshot, sources, apps, lastSyncAt, sync, setLogsOpen, update, recheckUpdate } =
-    useStore();
+  const {
+    snapshot,
+    sources,
+    apps,
+    lastSyncAt,
+    sync,
+    setLogsOpen,
+    update,
+    recheckUpdate,
+    hiddenCount,
+    patchedCount,
+    unhideAll,
+    clearPatched,
+  } = useStore();
   const { show } = useSnackbar();
   const [storage, setStorage] = useState<{ usage: number; quota: number } | null>(null);
   const [sheetsOpen, setSheetsOpen] = useState(false);
@@ -184,6 +196,45 @@ export function SettingsScreen() {
             </div>
           ))}
         </div>
+      </Card>
+
+      {/* --- Your marks ------------------------------------------- */}
+      <SectionHeader>Your marks</SectionHeader>
+      <Card variant="outlined" className="mx-4 overflow-hidden p-0">
+        <ListItem
+          headline="Hidden apps"
+          supporting={
+            hiddenCount
+              ? `${hiddenCount} hidden. They stay out of the list until you show them again.`
+              : 'Nothing hidden. Swipe a row left to hide it.'
+          }
+          trailing={
+            <Button variant="text" disabled={hiddenCount === 0} onClick={unhideAll}>
+              Unhide all
+            </Button>
+          }
+        />
+        <Divider inset />
+        <ListItem
+          headline="Marked as patched"
+          supporting={
+            patchedCount
+              ? `${patchedCount} app${patchedCount === 1 ? '' : 's'} marked. Swipe a row right, or use its sheet.`
+              : 'Nothing marked yet. Swipe a row right after you patch it.'
+          }
+          trailing={
+            <Button
+              variant="text"
+              disabled={patchedCount === 0}
+              onClick={() => {
+                clearPatched();
+                show({ message: 'Patched marks cleared.' });
+              }}
+            >
+              Clear
+            </Button>
+          }
+        />
       </Card>
 
       {/* --- Registry --------------------------------------------- */}

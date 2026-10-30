@@ -110,11 +110,21 @@ export function AppIcon({
   label,
   size = 48,
   className,
+  clip = false,
 }: {
   packageName: string;
   label: string;
   size?: number;
   className?: string;
+  /**
+   * Forces the artwork into a rounded tile.
+   *
+   * Android launcher icons already carry their own shape, so clipping them is
+   * wrong. Play Store artwork does not: it is a square JPEG, which is why the
+   * All apps list looked like a grid of squares next to the rounded installed
+   * icons. Registry rows opt into this; installed rows do not.
+   */
+  clip?: boolean;
 }) {
   const { loadIcon } = useStore();
   const [dataUrl, setDataUrl] = useState<string | null>(null);
@@ -202,7 +212,7 @@ export function AppIcon({
    * its own and would otherwise be a letter floating in space.
    */
   if (dataUrl) {
-    return (
+    const image = (
       <img
         ref={(node) => {
           holderRef.current = node;
@@ -212,10 +222,22 @@ export function AppIcon({
         width={size}
         height={size}
         loading="lazy"
-        className={cx('flex-none object-contain', className)}
-        style={{ width: size, height: size }}
+        className={cx('flex-none', clip ? 'size-full object-cover' : 'object-contain', className)}
+        style={clip ? undefined : { width: size, height: size }}
         aria-hidden="true"
       />
+    );
+
+    if (!clip) return image;
+
+    return (
+      <span
+        className="app-icon-clip flex-none"
+        style={{ width: size, height: size }}
+        aria-hidden="true"
+      >
+        {image}
+      </span>
     );
   }
 

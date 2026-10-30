@@ -248,7 +248,10 @@ const TONE_FILLS: Record<CardTone, string> = {
 const CARD_VARIANTS: Record<CardVariant, { fill: string; extra: string }> = {
   elevated: { fill: 'bg-surface-container-low', extra: 'shadow-e1' },
   filled: { fill: 'bg-surface-variant', extra: '' },
-  outlined: { fill: 'bg-surface', extra: 'border border-outline' },
+  outlined: {
+    fill: 'bg-surface-container-low',
+    extra: 'border border-outline-variant/70',
+  },
 };
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
@@ -271,9 +274,9 @@ export function Card({
   return (
     <div
       className={cx(
-        // Medium (12px). Cards are not FABs; the extra-large corner belongs to
-        // the components that actually float.
-        'rounded-md',
+        // Morphe Manager's cards are much rounder than the M3 default: 24px,
+        // which is what makes the app read as separate tiles rather than rows.
+        'rounded-[24px]',
         tone ? TONE_FILLS[tone] : spec.fill,
         spec.extra,
         interactive && 'state-layer cursor-pointer transition-shadow hover:shadow-e1',
@@ -323,7 +326,7 @@ export function Chip({
       type="button"
       aria-pressed={selected}
       className={cx(
-        'state-layer md-label-large inline-flex h-8 flex-none items-center gap-2 rounded-sm px-3',
+        'state-layer md-label-large inline-flex h-8 flex-none items-center gap-2 rounded-full px-4',
         'transition-colors duration-150 ease-standard',
         selected ? 'bg-secondary-container text-on-secondary-container' : inactive,
         className,
@@ -449,7 +452,7 @@ export function Badge({
   return (
     <span
       className={cx(
-        'md-label-medium inline-flex items-center gap-1 rounded-sm px-2 py-0.5',
+        'md-label-medium inline-flex items-center gap-1 rounded-full px-2.5 py-1',
         tones[tone],
         className,
       )}
@@ -1012,7 +1015,7 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
         <div
           role="status"
           aria-live="polite"
-          className="animate-enter fixed inset-x-4 bottom-[calc(var(--app-nav-height)+var(--safe-bottom)+8px)] z-50 flex items-center gap-4 rounded-xs bg-inverse-surface px-4 py-3 text-inverse-on-surface shadow-e3"
+          className="animate-enter fixed inset-x-4 bottom-[calc(var(--app-nav-height)+var(--safe-bottom)+8px)] z-50 flex items-center gap-4 rounded-[16px] border border-outline-variant bg-surface-container-highest px-4 py-3 text-on-surface shadow-e3"
         >
           <span className="md-body-medium flex-1">{state.message}</span>
           {state.action && (

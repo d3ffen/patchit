@@ -34,6 +34,13 @@ patch — then hands the covering patch sources to Morphe Manager.
 - **Browses apps you don't have** — switch the Apps tab to **All apps** to see
   every package the sources cover, not only the ones installed. Tapping one shows
   which versions it supports and lets you add that source to Morphe straight away.
+- **Filters like the community site** — category, verdict, patched state and
+  hidden state, with the same Play Store categories the web index uses.
+- **Hides apps you don't patch** — swipe a row left. Hidden apps stay out of the
+  way until you reveal them, with undo on every hide.
+- **Marks apps you already patched** — swipe right, or use the app's sheet. The
+  mark records which build it was made for, so a later update is shown as stale
+  rather than silently trusted.
 - **Works offline** — both indexes cached, plus a bundled snapshot.
 - **Sets Morphe up** — sends the covering repositories to Morphe Manager through
   its real `add-source` deep link.
@@ -73,6 +80,10 @@ npm run verify:theme     # measures every colour pair for WCAG contrast
 - `REQUEST_INSTALL_PACKAGES` — required to hand a downloaded update to Android's
   package installer. You also have to grant PatchIt "install unknown apps" before
   Android will accept it, and the installer always asks for confirmation.
+
+## Changelog
+
+Release notes live in [CHANGELOG.md](CHANGELOG.md).
 
 ## Licence
 

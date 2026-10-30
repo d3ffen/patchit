@@ -37,16 +37,15 @@ export function NavigationBar({
     <nav
       aria-label="Main"
       /*
-       * A row of three floating pills.
+       * One floating dock, not three separate pills.
        *
-       * The wrapper only positions the row; each pill below carries its own
-       * surface, hairline and elevation. That is what makes them three targets
-       * instead of one divided control — and it is why nothing visual is set
-       * here.
+       * This is the Morphe Manager navigation shape: a single rounded container
+       * with a hairline, and the selected destination carried by a filled pill
+       * *inside* it. Three detached pills read as three unrelated buttons; one
+       * container reads as a navigation bar with a current location.
        *
-       * No `bottom-0`/`inset-x-0` on this element: Tailwind emits utilities after
-       * the components layer, so an edge-pinning utility quietly beats the
-       * geometry in .md-nav-bar and welds the row to the bottom of the screen.
+       * The geometry lives in `.md-nav-bar` / `.md-nav-item` in index.css so the
+       * safe-area inset and the label size are defined once.
        */
       className="md-nav-bar fixed z-30 flex"
     >
@@ -56,32 +55,18 @@ export function NavigationBar({
           <button
             key={destination.id}
             type="button"
-            /*
-             * The visible label is gone, so the accessible name is carried here
-             * instead — otherwise this is three unlabelled buttons to a screen
-             * reader, which is worse than having labels at all.
-             */
             aria-label={destination.label}
             aria-current={selected ? 'page' : undefined}
             onClick={() => onNavigate(destination.id)}
             className={cx(
-              // `relative` is for the warning badge, which is absolutely placed.
-              'md-nav-pill state-layer relative flex flex-1 items-center justify-center',
-              'border shadow-e3 transition-colors duration-200 ease-emphasized',
-              /*
-               * The active pill is a step brighter than the other two rather than
-               * a different hue. secondary-container would tint it with whatever
-               * the wallpaper's accent happens to be, so the same app would show
-               * a teal pill on one phone and a pink one on the next.
-               */
-              selected
-                ? 'border-transparent bg-surface-container-high text-on-surface'
-                : 'border-outline-variant/40 bg-surface-container text-on-surface-variant',
+              'md-nav-item state-layer relative flex flex-1 items-center justify-center gap-2',
+              selected ? 'md-nav-item-active' : 'text-on-surface-variant',
             )}
           >
-            <Icon name={destination.icon} size={24} />
+            <Icon name={destination.icon} size={22} />
+            <span className="md-label-large">{destination.label}</span>
             {destination.badge ? (
-              <span className="md-label-small absolute right-3 top-1.5 grid min-w-4 place-items-center rounded-full bg-error px-1 text-on-error">
+              <span className="md-label-small absolute right-3 top-1 grid min-w-4 place-items-center rounded-full bg-error px-1 text-on-error">
                 {destination.badge > 99 ? '99+' : destination.badge}
               </span>
             ) : null}
@@ -93,7 +78,10 @@ export function NavigationBar({
 }
 
 export interface TopAppBarProps {
-  title: string;
+  /** Usually a string; the Apps screen passes the gradient wordmark element. */
+  title: ReactNode;
+  /** Extra classes for the title element (size/colour overrides). */
+  titleClassName?: string;
   /** A back arrow, when set; otherwise the leading slot is free for an avatar. */
   onBack?: () => void;
   leading?: ReactNode;
@@ -107,6 +95,7 @@ export interface TopAppBarProps {
 
 export function TopAppBar({
   title,
+  titleClassName,
   onBack,
   leading,
   actions,
@@ -117,7 +106,7 @@ export function TopAppBar({
   return (
     <header
       className={cx(
-        'sticky top-0 z-20 flex flex-col bg-surface transition-shadow duration-200',
+        'sticky top-0 z-20 flex flex-col bg-surface/85 backdrop-blur-xl transition-shadow duration-200',
         elevated && 'shadow-e2',
       )}
       style={{ paddingTop: 'var(--safe-top)' }}
@@ -129,7 +118,9 @@ export function TopAppBar({
           leading ?? <div className="w-4" />
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="md-title-large truncate px-2 text-on-surface">{title}</h1>
+          <h1 className={cx('md-title-large truncate px-2 text-on-surface', titleClassName)}>
+            {title}
+          </h1>
           {subtitle && <div className="md-body-small truncate px-2 text-on-surface-variant">{subtitle}</div>}
         </div>
         <div className="flex flex-none items-center gap-1 pr-1">{actions}</div>
@@ -155,7 +146,7 @@ export function Scaffold({
   className?: string;
 }) {
   return (
-    <div className={cx('flex h-full flex-col bg-background', className)}>
+    <div className={cx('flex h-full flex-col bg-transparent', className)}>
       {appBar}
       <main
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"

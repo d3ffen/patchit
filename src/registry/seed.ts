@@ -52,6 +52,7 @@ async function inflate(): Promise<RegistrySnapshot | null> {
     const bytes = await response.arrayBuffer();
     const text = await gunzip(bytes);
     const snapshot = JSON.parse(text) as RegistrySnapshot;
+    snapshot.store = snapshot.store ?? {};
 
     if (!Array.isArray(snapshot.bundles) || snapshot.bundles.length === 0) {
       log.warn('seed', 'Bundled registry parsed but contains no bundles');

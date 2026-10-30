@@ -212,6 +212,7 @@ const snapshot: RegistrySnapshot = {
   sources: [],
   fetchedAt: Date.now(),
   warnings: [],
+  store: {},
 };
 const index = buildIndex(snapshot);
 console.log(`  index: ${index.byPackage.size} packages, ${snapshot.bundles.length} bundles`);

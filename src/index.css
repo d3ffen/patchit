@@ -376,22 +376,22 @@
     font-size: 36px; line-height: 44px; letter-spacing: 0px; font-weight: 400;
   }
   .md-headline-large {
-    font-size: 32px; line-height: 40px; letter-spacing: 0px; font-weight: 400;
+    font-size: 32px; line-height: 40px; letter-spacing: -0.5px; font-weight: 700;
   }
   .md-headline-medium {
-    font-size: 28px; line-height: 36px; letter-spacing: 0px; font-weight: 400;
+    font-size: 28px; line-height: 36px; letter-spacing: -0.4px; font-weight: 700;
   }
   .md-headline-small {
-    font-size: 24px; line-height: 32px; letter-spacing: 0px; font-weight: 400;
+    font-size: 24px; line-height: 32px; letter-spacing: -0.3px; font-weight: 700;
   }
   .md-title-large {
-    font-size: 22px; line-height: 28px; letter-spacing: 0px; font-weight: 400;
+    font-size: 23px; line-height: 30px; letter-spacing: -0.3px; font-weight: 700;
   }
   .md-title-medium {
-    font-size: 16px; line-height: 24px; letter-spacing: 0.15px; font-weight: 500;
+    font-size: 16px; line-height: 24px; letter-spacing: 0px; font-weight: 600;
   }
   .md-title-small {
-    font-size: 14px; line-height: 20px; letter-spacing: 0.1px; font-weight: 500;
+    font-size: 14px; line-height: 20px; letter-spacing: 0.1px; font-weight: 600;
   }
   .md-body-large {
     font-size: 16px; line-height: 24px; letter-spacing: 0.5px; font-weight: 400;
@@ -403,7 +403,7 @@
     font-size: 12px; line-height: 16px; letter-spacing: 0.4px; font-weight: 400;
   }
   .md-label-large {
-    font-size: 14px; line-height: 20px; letter-spacing: 0.1px; font-weight: 500;
+    font-size: 14px; line-height: 20px; letter-spacing: 0.1px; font-weight: 600;
   }
   .md-label-medium {
     font-size: 12px; line-height: 16px; letter-spacing: 0.5px; font-weight: 500;
@@ -515,25 +515,225 @@
    * added by the component, not here, because only it knows the inset.
    */
   /*
-   * Three separate pills, not one bar with three compartments.
+   * One dock, matching Morphe Manager.
    *
-   * The container is only a positioning wrapper now — it owns where the row sits
-   * and the gaps between the pills, and nothing visual. Each pill carries its own
-   * surface, edge and elevation, so they read as three floating targets rather
-   * than as segments of one control.
+   * A single rounded container with a hairline and a soft elevation, padded by
+   * 6px so the selected item's fill sits inside it rather than bleeding to the
+   * edge. The selected pill is `primary-container` — Morphe's active tab is a
+   * blue fill with the label inside it, not a recoloured icon.
    */
   .md-nav-bar {
-    block-size: 64px;
+    block-size: 68px;
     inset-inline: var(--app-nav-inset);
     inset-block-end: calc(var(--safe-bottom) + var(--app-nav-inset));
-    gap: var(--app-nav-gap);
+    gap: 4px;
+    padding: 6px;
+    border-radius: var(--md-sys-shape-full);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    background-color: color-mix(in srgb, var(--md-sys-color-surface-container) 92%, transparent);
+    box-shadow: var(--md-sys-elevation-3);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
   }
 
-  .md-nav-pill {
-    /* Full height of the row: past the 48px minimum touch target, with no label
-       under the icon to enlarge it. */
-    min-block-size: 64px;
+  .md-nav-item {
+    min-block-size: 56px;
     border-radius: var(--md-sys-shape-full);
+    transition: background-color 200ms var(--md-sys-motion-easing-emphasized),
+      color 200ms var(--md-sys-motion-easing-emphasized);
+  }
+
+  .md-nav-item-active {
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+  }
+
+  /* Morphe-style wordmark: the brand gradient, clipped to the text. */
+  .wordmark {
+    font-size: 26px;
+    line-height: 32px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    background-image: linear-gradient(100deg, #4a7fc8 0%, #00afae 50%, #4a7fc8 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: wordmark-pan 9s ease-in-out infinite;
+  }
+
+  /*
+   * Ambient background orbs.
+   *
+   * The Morphe home screen puts two large, very soft colour fields behind the
+   * content. They are fixed and non-interactive, and sit under every screen so
+   * a scroll never drags them along.
+   */
+  .app-ambient {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .app-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(72px);
+    opacity: 0.32;
+  }
+
+  .app-orb-a {
+    inline-size: 380px;
+    block-size: 380px;
+    inset-block-start: -140px;
+    inset-inline-end: -120px;
+    background: radial-gradient(circle, #1e5aa8 0%, transparent 70%);
+  }
+
+  .app-orb-b {
+    inline-size: 320px;
+    block-size: 320px;
+    inset-block-end: -120px;
+    inset-inline-start: -100px;
+    background: radial-gradient(circle, #00afae 0%, transparent 70%);
+  }
+
+  :root[data-theme='light'] .app-orb {
+    opacity: 0.16;
+  }
+
+  @keyframes wordmark-pan {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  /*
+   * The app row card.
+   *
+   * Morphe Manager's app cards are a gradient from the app's own colour to the
+   * Morphe teal, with white type. The hue is supplied per row from the package
+   * name, and the gradient is deliberately kept dark enough that white text
+   * clears 7:1 — the brand look must not cost legibility.
+   */
+  .app-tile {
+    --tile-hue: 220;
+    transition: transform 200ms var(--md-sys-motion-easing-emphasized),
+      box-shadow 200ms var(--md-sys-motion-easing-emphasized);
+    will-change: transform;
+    --tile-fg: #ffffff;
+    --tile-fg-dim: rgb(255 255 255 / 0.72);
+    --tile-chip: rgb(255 255 255 / 0.16);
+    --tile-chip-fg: #ffffff;
+    background-image: linear-gradient(
+      105deg,
+      hsl(var(--tile-hue) 38% 24%) 0%,
+      hsl(calc(var(--tile-hue) + 40) 34% 26%) 55%,
+      #0d5f5e 100%
+    );
+    border: 1px solid rgb(255 255 255 / 0.10);
+  }
+
+  :root[data-theme='light'] .app-tile {
+    --tile-fg: var(--md-sys-color-on-surface);
+    --tile-fg-dim: var(--md-sys-color-on-surface-variant);
+    --tile-chip: var(--md-sys-color-surface-container-high);
+    --tile-chip-fg: var(--md-sys-color-on-surface-variant);
+    background-image: none;
+    background-color: var(--md-sys-color-surface-container-low);
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .tile-title {
+    color: var(--tile-fg);
+  }
+
+  .tile-sub {
+    color: var(--tile-fg-dim);
+  }
+
+  .tile-chip {
+    background-color: var(--tile-chip);
+    color: var(--tile-chip-fg);
+  }
+
+  .tile-chevron {
+    color: var(--tile-fg-dim);
+    opacity: 0.7;
+  }
+
+  /*
+   * Motion.
+   *
+   * Three deliberate pieces, not a full animation framework: rows enter with a
+   * short stagger, screens cross-fade, and a pressed card compresses under the
+   * finger. Everything is transform/opacity so it stays on the compositor.
+   */
+  .app-tile:active {
+    transform: scale(0.985);
+  }
+
+  @media (hover: hover) {
+    .app-tile:hover {
+      transform: translateY(-1px);
+    }
+
+    .app-tile:active {
+      transform: scale(0.985);
+    }
+  }
+
+  .md-nav-item svg {
+    transition: transform 240ms var(--md-sys-motion-easing-emphasized);
+  }
+
+  .md-nav-item-active svg {
+    transform: scale(1.08);
+  }
+
+  .animate-row-in {
+    animation: row-in 380ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  }
+
+  .animate-screen-in {
+    animation: screen-in 280ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  }
+
+  @keyframes row-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes screen-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .swipe-action {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    padding-inline: 24px;
+    border-radius: 24px;
   }
 
   /*
@@ -567,6 +767,21 @@
   }
 
   /* Squircle-ish container used by the tonal app-icon tiles in the list. */
+  /* Play Store artwork is square; this is the rounded tile registry rows use. */
+  .app-icon-clip {
+    display: inline-grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 24%;
+    background-color: var(--md-sys-color-surface-container-high);
+  }
+
+  .app-icon-clip img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+
   .app-icon-tile {
     border-radius: var(--md-sys-shape-medium);
     overflow: hidden;

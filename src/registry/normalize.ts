@@ -5,6 +5,7 @@ import type {
   OfficialCompatibility,
   OfficialPatchList,
   OfficialTarget,
+  StoreApp,
 } from './schema';
 
 /**
@@ -365,6 +366,32 @@ function parseLooseCompatibility(
     signatures: normalizeSignatures(raw.signatures),
     targets,
   };
+}
+
+/**
+ * The `store` map is the community crawl's own Play Store metadata: it is
+ * keyed by package name and is the only source of categories and store icons.
+ *
+ * Parsed separately from the bundles because it arrives in the same file but
+ * has nothing to do with patch compatibility. A malformed entry is dropped
+ * rather than failing the sync — a missing category costs a filter chip, while
+ * a thrown error would cost the whole registry.
+ */
+export function parseCommunityStore(raw: unknown): Record<string, StoreApp> {
+  if (!isRecord(raw)) return {};
+
+  const store: Record<string, StoreApp> = {};
+  for (const [packageName, value] of Object.entries(raw)) {
+    if (!packageName || !isRecord(value)) continue;
+    const category = asString(value.category);
+    store[packageName] = {
+      name: asString(value.name),
+      category: category && category.trim() ? category.trim() : null,
+      iconUrl: asString(value.iconUrl),
+      description: asString(value.description),
+    };
+  }
+  return store;
 }
 
 export function parseCommunityIndex(
